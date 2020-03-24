@@ -1,32 +1,13 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import datetime
 
-def main():
-    import configparser
-    config = configparser.ConfigParser()
-    config.read('oanda.conf')
-
-    accountID = config['OANDA']['accountID']
-    access_token = config['OANDA']['access_token']
-
-    # 200件5分足
-    params = {
-      "count": 200,
-      "granularity": "M1"
-    }
-
-    access(access_token,params)
-
-
-def access(access_token, params):
+def rateDF(access_token, instrument,params):
 
     from oandapyV20 import API
     import oandapyV20.endpoints.instruments as instruments
     api = API(access_token=access_token)
 
     # APIから為替レートのストリーミングを取得
-    r = instruments.InstrumentsCandles(instrument="USD_JPY", params=params)
+    r = instruments.InstrumentsCandles(instrument=instrument, params=params)
     api.request(r)
 
     import json
@@ -41,8 +22,26 @@ def access(access_token, params):
     # APIから取得した日付（time）を日付型に変換
     rate.index = pd.to_datetime(rate.index)
 
-    # 念のためDataFrameの確認
-    print(rate.head())
+    return rate
+
+
+def main():
+    import configparser
+    config = configparser.ConfigParser()
+    config.read('oanda.conf')
+
+    accountID = config['OANDA']['accountID']
+    access_token = config['OANDA']['access_token']
+
+    instrument ="USD_JPY"
+    # 200件5分足
+    params = {
+      "count": 3,
+      "granularity": "M1"
+    }
+
+    rateDF(access_token=access_token ,instrument=instrument ,params=params)
+
 
 if __name__ == '__main__':
     main()
