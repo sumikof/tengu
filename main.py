@@ -25,6 +25,7 @@ def create_ex_csv(account):
 
 def main():
     rest_action(get_account())
+    create_ex_csv(get_account())
 
 
 
