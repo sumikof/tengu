@@ -1,4 +1,8 @@
+from scipy.stats import stats
 
+import dl
+from dl import util
+from dl.oanda_keras import oanda_keras
 from oanda_api import oanda_rest_api
 
 
@@ -28,7 +32,6 @@ def oanda_dataframe():
     df = pd.read_csv('USD_JPY_M1.csv')
     df['date'] = pd.to_datetime(df['date'])
     #df = df[df['date'].dt.minute % 10 == 0]
-    df = df.tail(1000)
 
     return df
 
@@ -40,13 +43,76 @@ def oanda_graph(df):
     plt.plot(df['date'], df['low'], color='blue')
     plt.show()
 
+def outlier_iqr(df):
 
+    for i in range(len(df.columns)):
+
+        # 列を抽出する
+        col = df.iloc[:,i]
+
+        # 四分位数
+        q1 = col.describe()['25%']
+        q3 = col.describe()['75%']
+        iqr = q3 - q1 #四分位範囲
+
+        # 外れ値の基準点
+        outlier_min = q1 - (iqr) * 1.5
+        outlier_max = q3 + (iqr) * 1.5
+
+        # 範囲から外れている値を除く
+        col[col < outlier_min] = None
+        col[col > outlier_max] = None
+
+    return df
+
+def henka(df):
+    aft = df.drop(df.head(1).index).reset_index(drop=True)
+    org = df.drop(df.tail(1).index).reset_index(drop=True)
+    df = aft/org
+    df = outlier_iqr(df).dropna()
+    return df
+
+import matplotlib.pyplot as plt
 def main():
     df = oanda_dataframe()
-    print(df)
-    oanda_graph(df)
+#    from dl import sample_rnn
+#    sample_rnn.odlprint()
+    from dl import oanda_keras as odl
+    #df = df[df['date'].dt.minute % 5 == 0]
+    #df = df.tail(4000)
+    #print(df.tail(5))
+    df = df.drop('date', axis=1)[["close"]]
 
 
+    df = util.standard_0_1(df)
+    df = df.rolling(window=5).mean().dropna()
+    #fig(df)
+    #df = df.apply(stats.zscore, axis=0)
+    after_proc(df)
+
+def fig(df):
+    df.plot(figsize=(15, 5))
+    plt.show()
+
+def after_proc(df):
+
+    ok = oanda_keras(
+        length_of_sequences = 5,
+        in_out_neurons = 1,
+        hidden_neurons = 300,
+        batch_size=10000,
+        epochs=5,
+        validation_split=0.05)
+    X_test, y_test, predicted,history = ok.oadna_make_batchdata(df)
+    import pandas as pd
+    dataf = pd.DataFrame(predicted)
+    dataf.columns = ["predict"]
+    dataf["input"] = y_test
+
+    a = pd.DataFrame()
+    a['val_loss'] = pd.Series(history.history['val_loss'])
+    a['loss'] = pd.Series(history.history['loss'])
+    fig(a)
 
 
 if __name__ == '__main__':
