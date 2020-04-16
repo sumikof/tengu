@@ -27,9 +27,9 @@ def get_account():
     account = create_account('oanda.conf')
     return account
 
-def oanda_dataframe():
+def oanda_dataframe(file_name):
     import pandas as pd
-    df = pd.read_csv('USD_JPY_M1.csv')
+    df = pd.read_csv(file_name)
     df['date'] = pd.to_datetime(df['date'])
     #df = df[df['date'].dt.minute % 10 == 0]
 
