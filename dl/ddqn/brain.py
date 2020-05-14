@@ -45,7 +45,7 @@ class BrainDDQN:
         learning_rate = ETA
         state_size = self.num_states
         action_size = self.num_actions
-        hidden_size = 10
+        hidden_size = 32
 
         self.main_q_network = NNet(learning_rate, state_size, action_size, hidden_size)
         self.target_q_network = NNet(learning_rate, state_size, action_size, hidden_size)
@@ -54,7 +54,7 @@ class BrainDDQN:
         """
         ε-greedy法で徐々に最適行動のみを採用する
         """
-        epsilon = 0.001 * (0.9 / (episode + 1))
+        epsilon = 0.5 * (1 / (episode + 1))
 
         if epsilon <= np.random.uniform(0, 1):
             target_action = self.main_q_network.model.predict(state)[0]
