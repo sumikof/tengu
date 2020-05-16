@@ -1,3 +1,4 @@
+from keras import Model, Input
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
@@ -10,11 +11,13 @@ class SimpleNNet:
         self.input_size = state_size
         self.output_size = action_size
 
-        self.model = Sequential()
-        self.model.add(Dense(hidden_size, activation='relu', input_dim=self.input_size))
-        self.model.add(Dense(hidden_size, activation='relu'))
-        self.model.add(Dense(self.output_size, activation='linear'))
+        main_input = Input(shape=(self.input_size,), name='main_input')
+        model = Dense(hidden_size, activation='relu')(main_input)
+        model = Dense(hidden_size, activation='relu')(model)
+        model = Dense(self.output_size, activation='linear')(model)
+
+        self.model = Model(inputs=main_input, outputs=model)
+
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
-        # self.model.compile(loss='mse', optimizer=self.optimizer)
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
 
