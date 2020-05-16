@@ -1,15 +1,11 @@
-from dl.ddqn.agent import AgentDDQN
 import numpy as np
 
-NUM_EPISODES = 300
-MAX_STEPS = 200
-
-
-
 class EnvironmentDDQN:
-    def __init__(self,env):
+    def __init__(self,env,agent,num_episodes = 300,max_steps = 200):
         self.env = env
-        self.agent = AgentDDQN(self.env.num_status, self.env.num_actions)
+        self.agent = agent
+        self.num_episodes = num_episodes
+        self.max_steps = max_steps
 
     def conv_tensor(self, state, shape):
         return np.reshape(state,shape)
@@ -17,7 +13,7 @@ class EnvironmentDDQN:
     def run(self):
 
         # 試行回数分実行
-        for self.episode in range(NUM_EPISODES):
+        for self.episode in range(self.num_episodes):
 
             print("start episode : "+str(self.episode))
 
@@ -27,7 +23,7 @@ class EnvironmentDDQN:
             state = observation
             state = self.conv_tensor(state,[1,self.env.num_status])
 
-            for self.step in range(MAX_STEPS):
+            for self.step in range(self.max_steps):
                 # main networkから行動を決定
                 action = self.agent.get_action(state, self.episode)
 

@@ -1,8 +1,8 @@
 from dl.ddqn.brain import BrainDDQN
 
 class AgentDDQN:
-    def __init__(self, num_states, num_actions):
-        self.brain = BrainDDQN(num_states, num_actions)
+    def __init__(self, brain):
+        self.brain = brain
 
     def update_Q_function(self):
         """memoryからmain Q networkの更新"""
