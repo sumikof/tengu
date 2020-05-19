@@ -6,23 +6,24 @@ class TestCartPole:
     def __init__(self):
         self.env = gym.make('CartPole-v0')
         self.num_actions = self.env.action_space.n  # 取れる行動の数
-        self.num_status = self.env.observation_space.shape[0]  # 状態を表す変数の数
+        num = self.env.observation_space.shape[0]
+        self.num_status = num  # 状態を表す変数の数
         self.complete_episodes = 0
+        self.mask = [True, True]
 
     def reset(self):
         return self.env.reset()
 
-    def step(self, action, environtment):
+    def step(self, action, environment):
         next_state, reward, done, info = self.env.step(action)
-
         next_state = np.reshape(next_state, [1, self.num_status])
 
         if done:
-            print("done is step : " + str(environtment.step))
+            print("done is step : " + str(environment.step))
             next_state = np.zeros([1, self.num_status])
 
             # 報酬の設定
-            if environtment.step < 195:
+            if environment.step < 195:
                 # 失敗
                 reward = -1
                 self.complete_episodes = 0
@@ -42,9 +43,7 @@ class TestCartPole:
 
 if __name__ == '__main__':
     test = TestCartPole()
-    print(test.num_actions)
-    print(test.num_status)
-    print(test.reset())
+    test.reset()
 
     from dl.ddqn.environment import EnvironmentDDQN
 
@@ -59,6 +58,6 @@ if __name__ == '__main__':
     brain = BrainDDQN(main_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size),
                       target_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size))
     agent = AgentDDQN(brain)
-    env = EnvironmentDDQN(test, agent)
+    env = EnvironmentDDQN(test, agent, max_steps=0)
 
     env.run()

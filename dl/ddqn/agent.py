@@ -8,9 +8,9 @@ class AgentDDQN:
         """memoryからmain Q networkの更新"""
         self.brain.replay()
 
-    def get_action(self, state, episode):
+    def get_action(self, state, episode,mask):
         """行動の決定"""
-        action = self.brain.decide_action(state, episode)
+        action = self.brain.decide_action(state, episode,mask)
         return action
 
     def memorize(self, state, action, next_state, reward):

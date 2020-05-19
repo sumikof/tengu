@@ -4,8 +4,9 @@ import numpy as np
 
 class BrainDDQN:
     def __init__(self, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99):
-        self.num_actions = main_network.output_size  # 取れる行動の数
+
         self.num_states = main_network.input_size
+        self.num_actions = main_network.output_size  # 取れる行動の数
 
         self.batch_size = batch_size
         self.memory_capacity = memory_capacity
@@ -16,7 +17,7 @@ class BrainDDQN:
         self.main_q_network = main_network
         self.target_q_network = target_network
 
-    def decide_action(self, state, episode):
+    def decide_action(self, state, episode,mask):
         """
         ε-greedy法で徐々に最適行動のみを採用する
         """
@@ -24,6 +25,7 @@ class BrainDDQN:
 
         if epsilon <= np.random.uniform(0, 1):
             target_action = self.main_q_network.model.predict(state)[0]
+            target_action = target_action * mask
             action = np.argmax(target_action)
         else:
             action = np.random.choice(self.num_actions)  # どれかのアクションを返す

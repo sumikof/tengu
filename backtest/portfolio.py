@@ -17,11 +17,12 @@ class Trade:
         return self.position_type
 
     @position.setter
-    def position(self,value):
+    def position(self, value):
         self.__position = value
 
     def __str__(self):
-        return "date %s, position: %s,trade: %s,rate %f, amount %d" % (self.date,self.position_type,self.trade,self.rate,self.amount)
+        return "date %s, position: %s,trade: %s,rate %f, amount %d" % (
+        self.date, self.position_type, self.trade, self.rate, self.amount)
 
 
 class Position:
@@ -35,7 +36,7 @@ class Position:
         self.amount = trade.amount
 
     def value(self, rate):
-        return (rate - self.rate ) * self.position_type * self.amount
+        return (rate - self.rate) * self.position_type * self.amount
 
 
 class Portfolio:
@@ -45,10 +46,9 @@ class Portfolio:
     balance = 0
     spread = 0
 
-    def __init__(self,spread=0.0,deposit=0):
+    def __init__(self, spread=0.0, deposit=0):
         self.spread = spread
-        self.balance= deposit
-
+        self.balance = deposit
 
     def deposit(self, dep):
         """
@@ -71,8 +71,9 @@ class Portfolio:
         trade = Trade(position_type, OPEN, date, deal_rate, amount)
         self.trading.append(trade)
         self.deals = Position(trade)
+        print("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate,self.spread,deal_rate))
 
-    def close_deal(self, date, rate,amount):
+    def close_deal(self, date, rate, amount):
         """
         決済
         :param date:
@@ -81,9 +82,15 @@ class Portfolio:
         """
         trade = Trade(self.deals.position_type, CLOSE, date, rate, amount)
         self.trading.append(trade)
-        self.profit += self.current_profit(rate)
+        position_rate = self.deals.rate
+        profit = self.current_profit(rate)
+        self.profit += profit
         self.balance += self.current_profit(rate)
         self.deals = None
+        print("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
+
+    def position_rate(self):
+        return self.deals.rate
 
     def current_profit(self, rate):
         if self.has_deals():

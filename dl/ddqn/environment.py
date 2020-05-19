@@ -23,9 +23,14 @@ class EnvironmentDDQN:
             state = observation
             state = self.conv_tensor(state,[1,self.env.num_status])
 
-            for self.step in range(self.max_steps):
+            done = False
+            self.step = 0
+            while not done:
+                if self.max_steps != 0 and self.step > self.max_steps:
+                    break
+
                 # main networkから行動を決定
-                action = self.agent.get_action(state, self.episode)
+                action = self.agent.get_action(state, self.episode,self.env.mask)
 
                 # 行動の実行（次の状態と終了判定を取得）
                 next_state, reward, done, _ = self.env.step(action,self)
@@ -43,6 +48,7 @@ class EnvironmentDDQN:
                         self.agent.update_target_Q_function()
                     break
 
+                self.step += 1
 
             if self.env.is_finish():
                 print("成功")

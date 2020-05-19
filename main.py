@@ -27,14 +27,6 @@ def get_account():
     account = create_account('oanda.conf')
     return account
 
-def oanda_dataframe(file_name):
-    import pandas as pd
-    df = pd.read_csv(file_name)
-    df['date'] = pd.to_datetime(df['date'])
-    #df = df[df['date'].dt.minute % 10 == 0]
-
-    return df
-
 
 def oanda_graph(df):
     import matplotlib.pyplot as plt
@@ -74,6 +66,7 @@ def henka(df):
 
 import matplotlib.pyplot as plt
 def main():
+    from common.util import oanda_dataframe
     df = oanda_dataframe()
 #    from dl import sample_rnn
 #    sample_rnn.odlprint()
