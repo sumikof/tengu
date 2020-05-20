@@ -24,7 +24,7 @@ class BrainDDQN:
         epsilon = 0.5 * (1 / (episode + 1))
 
         if epsilon <= np.random.uniform(0, 1):
-            target_action = self.main_q_network.model.predict(state)[0]
+            target_action = self.main_q_network.predict(state)[0]
             target_action = target_action * mask
             action = np.argmax(target_action)
         else:
@@ -67,18 +67,19 @@ class BrainDDQN:
 
             if not (next_state_b == np.zeros(state_b.shape)).all(axis=1):
                 # 価値の計算
-                main_q = self.main_q_network.model.predict(next_state_b)
+                main_q = self.main_q_network.predict(next_state_b)
                 next_action = np.argmax(main_q)
 
-                next_action_q = self.target_q_network.model.predict(next_state_b)
+                next_action_q = self.target_q_network.predict(next_state_b)
                 reward = reward_b + self.gamma * next_action_q[0][next_action]
 
             else:
                 reward = reward_b
 
             states[i] = state_b
+            #states.append( state_b)
 
-            action_values[i] = self.main_q_network.model.predict(state_b)
+            action_values[i] = self.main_q_network.predict(state_b)
             action_values[i][action_b] = reward
 
         return states, action_values
@@ -86,9 +87,9 @@ class BrainDDQN:
     def update_main_q_network(self, states, action_values):
         # Qネットワークの重みを学習・更新する replay
         if len(self.memory) > self.batch_size:
-            self.main_q_network.model.train_on_batch(
+            self.main_q_network.train_on_batch(
                 states, action_values)
 
     def update_target_q_network(self):
         # target ネットワークを更新する
-        self.target_q_network.model.set_weights(self.main_q_network.model.get_weights())
+        self.target_q_network.set_weights(self.main_q_network.get_weights())

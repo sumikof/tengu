@@ -8,6 +8,7 @@ class TestCartPole:
         self.num_actions = self.env.action_space.n  # 取れる行動の数
         num = self.env.observation_space.shape[0]
         self.num_status = num  # 状態を表す変数の数
+        self.shape_status = [1,self.num_status]
         self.complete_episodes = 0
         self.mask = [True, True]
 
@@ -16,11 +17,11 @@ class TestCartPole:
 
     def step(self, action, environment):
         next_state, reward, done, info = self.env.step(action)
-        next_state = np.reshape(next_state, [1, self.num_status])
+        next_state = np.reshape(next_state,  self.shape_status)
 
         if done:
             print("done is step : " + str(environment.step))
-            next_state = np.zeros([1, self.num_status])
+            next_state = np.zeros( self.shape_status)
 
             # 報酬の設定
             if environment.step < 195:
