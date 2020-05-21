@@ -63,8 +63,7 @@ class BrainDDQN:
         action_values = []
         for i, (state_b, action_b, next_state_b, reward_b) in enumerate(batch):
 
-            # if not (next_state_b == np.zeros(state_b.shape)).all(axis=1):
-            if not (next_state_b == np.zeros(state_b.shape)).all():
+            if not self.env.check_status_is_done(next_state_b):
                 # 価値の計算
                 main_q = self.main_q_network.predict([next_state_b])[0]
                 next_action = np.argmax(main_q)

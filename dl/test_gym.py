@@ -41,6 +41,9 @@ class TestCartPole:
     def is_finish(self):
         return self.complete_episodes > 10
 
+    def check_status_is_done(self,state):
+        return (state == np.zeros( self.num_status)).all()
+
 
 if __name__ == '__main__':
     test = TestCartPole()
