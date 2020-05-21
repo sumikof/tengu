@@ -2,6 +2,7 @@ from keras import Model, Input
 import keras.backend as K
 from keras.layers import Dense, Concatenate, Lambda
 from keras.optimizers import Adam
+import numpy as np
 
 from dl.ddqn.loss_function import huberloss
 
@@ -31,9 +32,12 @@ class DuelingNNet:
 
 
     def predict(self,input):
+        input = np.reshape(input,[len(input),self.input_size])
         return self._model.predict(input)
 
     def train_on_batch(self,x,y):
+        x = np.reshape(x, [len(x), self.input_size])
+        y = np.reshape(y, [len(y), self.output_size])
         return self._model.train_on_batch(x,y)
 
     def set_weights(self,w):

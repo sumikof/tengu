@@ -19,10 +19,7 @@ class EnvironmentDDQN:
             print("start episode : " + str(self.episode))
 
             # 環境の初期化
-            observation = self.env.reset()
-
-            state = observation
-            state = self.conv_tensor(state, self.env.shape_status)
+            state = self.env.reset()
 
             done = False
             self.step = 0

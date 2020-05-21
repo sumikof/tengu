@@ -24,7 +24,7 @@ class BrainDDQN:
         epsilon = 0.5 * (1 / (episode + 1))
 
         if epsilon <= np.random.uniform(0, 1):
-            target_action = self.main_q_network.predict(state)[0]
+            target_action = self.main_q_network.predict([state])[0]
             target_action = target_action * mask
             action = np.argmax(target_action)
         else:
@@ -60,28 +60,25 @@ class BrainDDQN:
         :return: 状態,状態に対して更新するaction_value
         """
 
-        states = np.zeros((self.batch_size, self.num_states))
-        action_values = np.zeros((self.batch_size, self.num_actions))
-
+        states = []
+        action_values = []
         for i, (state_b, action_b, next_state_b, reward_b) in enumerate(batch):
 
-            if not (next_state_b == np.zeros(state_b.shape)).all(axis=1):
+            #if not (next_state_b == np.zeros(state_b.shape)).all(axis=1):
+            if not (next_state_b == np.zeros(state_b.shape)).all():
                 # 価値の計算
-                main_q = self.main_q_network.predict(next_state_b)
+                main_q = self.main_q_network.predict([next_state_b])[0]
                 next_action = np.argmax(main_q)
 
-                next_action_q = self.target_q_network.predict(next_state_b)
+                next_action_q = self.target_q_network.predict([next_state_b])
                 reward = reward_b + self.gamma * next_action_q[0][next_action]
 
             else:
                 reward = reward_b
 
-            states[i] = state_b
-            #states.append( state_b)
-
-            action_values[i] = self.main_q_network.predict(state_b)
+            states.append(state_b)
+            action_values.append(self.main_q_network.predict([state_b])[0])
             action_values[i][action_b] = reward
-
         return states, action_values
 
     def update_main_q_network(self, states, action_values):

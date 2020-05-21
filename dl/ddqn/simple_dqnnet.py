@@ -3,14 +3,13 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 
 from dl.ddqn.loss_function import huberloss
-
+import numpy as np
 
 class SimpleNNet:
     def __init__(self, learning_rate=0.01, state_size=4, action_size=2, hidden_size=10):
         self.input_size = state_size
         self.output_size = action_size
 
-        #main_input = Input(shape=(self.input_size,), name='main_input')
         main_input = Input(shape=(self.input_size,), name='main_input')
         model = Dense(hidden_size, activation='relu')(main_input)
         model = Dense(hidden_size, activation='relu')(model)
@@ -22,9 +21,12 @@ class SimpleNNet:
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
     def predict(self,input):
+        input = np.reshape(input,[len(input),self.input_size])
         return self._model.predict(input)
 
     def train_on_batch(self,x,y):
+        x = np.reshape(x, [len(x), self.input_size])
+        y = np.reshape(y, [len(y), self.output_size])
         return self._model.train_on_batch(x,y)
 
     def set_weights(self,w):

@@ -27,10 +27,22 @@ class OandaDuelingNNet:
         model = Lambda(lambda a: K.expand_dims(a[:, 0], -1) + a[:, 1:] - K.mean(a[:, 1:], axis=1, keepdims=True),
                        output_shape=(self.output_size,))(model)
 
-        self.model = Model(inputs=main_input, outputs=model)
+        self._model = Model(inputs=main_input, outputs=model)
 
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
-        self.model.compile(loss=huberloss, optimizer=self.optimizer)
+        self._model.compile(loss=huberloss, optimizer=self.optimizer)
+
+    def predict(self,input):
+        return self._model.predict(input)
+
+    def train_on_batch(self,x,y):
+        return self._model.train_on_batch(x,y)
+
+    def set_weights(self,w):
+        return self._model.set_weights(w)
+
+    def get_weights(self):
+        return self._model.get_weights()
 
 
 if __name__ == '__main__':

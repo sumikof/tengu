@@ -13,15 +13,15 @@ class TestCartPole:
         self.mask = [True, True]
 
     def reset(self):
-        return self.env.reset()
+        state = self.env.reset()
+        return state
 
     def step(self, action, environment):
         next_state, reward, done, info = self.env.step(action)
-        next_state = np.reshape(next_state,  self.shape_status)
 
         if done:
             print("done is step : " + str(environment.step))
-            next_state = np.zeros( self.shape_status)
+            next_state = np.zeros( self.num_status)
 
             # 報酬の設定
             if environment.step < 195:
