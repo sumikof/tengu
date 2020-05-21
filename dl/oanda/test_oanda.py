@@ -6,13 +6,14 @@ from backtest.portfolio import LONG
 
 from collections import namedtuple
 
+from dl.test_abc import TestABC
+
 StepState = namedtuple('stepstate', ('rates', 'current_rate', 'current_profit', 'has_deals'))
 
 
-class TestOanda:
-
-    position_mask = np.array([True,False,True])
-    non_position_mask = np.array([True,True,False])
+class TestOanda(TestABC):
+    position_mask = np.array([True, False, True])
+    non_position_mask = np.array([True, True, False])
 
     def __init__(self, lst):
 
@@ -23,7 +24,7 @@ class TestOanda:
         self.lst = lst
         self.complete_episodes = 0
         self.portfolio = None
-        self.__mask = [True,True,False]
+        self.__mask = [True, True, False]
         self.reset()
 
     @property
@@ -55,7 +56,7 @@ class TestOanda:
     def _add_index(self):
         self.index += 1
         self.endindex += 1
-        done = self.endindex >= self.batch_size -1
+        done = self.endindex >= self.batch_size - 1
         return done
 
     def _get_rate(self):
@@ -107,17 +108,19 @@ if __name__ == '__main__':
     df_org = oanda_dataframe('../USD_JPY_M1.csv')
     test = TestOanda(df_org['close'].values)
 
+
     class TestData:
         pass
+
 
     done = False
     step = 0
     total_reward = 0
     while not done:
-        print("execute step {0} test step {1} end {2}".format(step,test.index,test.endindex))
+        print("execute step {0} test step {1} end {2}".format(step, test.index, test.endindex))
         env = TestData()
         env.step = step
-        action = choices(np.array([0,1,2]) * test.mask)[0]
+        action = choices(np.array([0, 1, 2]) * test.mask)[0]
         state, reward, done, _ = test.step(action, env)
         if reward != 0:
             print("reward :{0:.3f}".format(reward))

@@ -1,8 +1,10 @@
 import gym
 import numpy as np
 
+from dl.test_abc import TestABC
 
-class TestCartPole:
+
+class TestCartPole(TestABC):
     def __init__(self):
         self.env = gym.make('CartPole-v0')
         self.num_actions = self.env.action_space.n  # 取れる行動の数
@@ -10,7 +12,10 @@ class TestCartPole:
         self.num_status = num  # 状態を表す変数の数
         self.shape_status = [1,self.num_status]
         self.complete_episodes = 0
-        self.mask = [True, True]
+
+    @property
+    def mask(self):
+        return [True, True]
 
     def reset(self):
         state = self.env.reset()
