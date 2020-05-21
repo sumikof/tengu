@@ -60,7 +60,8 @@ if __name__ == '__main__':
     from dl.ddqn.brain import BrainDDQN
 
     Net = DuelingNNet
-    brain = BrainDDQN(main_network=Net(learning_rate, test.num_status, test.num_actions, hidden_size),
+    brain = BrainDDQN(test,
+                      main_network=Net(learning_rate, test.num_status, test.num_actions, hidden_size),
                       target_network=Net(learning_rate, test.num_status, test.num_actions, hidden_size))
     agent = AgentDDQN(brain)
     env = EnvironmentDDQN(test, agent)

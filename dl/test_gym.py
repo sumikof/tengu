@@ -56,7 +56,8 @@ if __name__ == '__main__':
     from dl.ddqn.brain import BrainDDQN
     from dl.ddqn.simple_dqnnet import SimpleNNet
 
-    brain = BrainDDQN(main_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size),
+    brain = BrainDDQN(test,
+                      main_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size),
                       target_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size))
     agent = AgentDDQN(brain)
     env = EnvironmentDDQN(test, agent, max_steps=0)

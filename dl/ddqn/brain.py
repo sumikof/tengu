@@ -3,10 +3,9 @@ import numpy as np
 
 
 class BrainDDQN:
-    def __init__(self, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99):
+    def __init__(self, env, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99):
 
-        self.num_states = main_network.input_size
-        self.num_actions = main_network.output_size  # 取れる行動の数
+        self.env = env
 
         self.batch_size = batch_size
         self.memory_capacity = memory_capacity
@@ -17,7 +16,7 @@ class BrainDDQN:
         self.main_q_network = main_network
         self.target_q_network = target_network
 
-    def decide_action(self, state, episode,mask):
+    def decide_action(self, state, episode, mask):
         """
         ε-greedy法で徐々に最適行動のみを採用する
         """
@@ -28,7 +27,7 @@ class BrainDDQN:
             target_action = target_action * mask
             action = np.argmax(target_action)
         else:
-            action = np.random.choice(self.num_actions)  # どれかのアクションを返す
+            action = np.random.choice(self.env.num_actions)  # どれかのアクションを返す
 
         return action
 
@@ -64,7 +63,7 @@ class BrainDDQN:
         action_values = []
         for i, (state_b, action_b, next_state_b, reward_b) in enumerate(batch):
 
-            #if not (next_state_b == np.zeros(state_b.shape)).all(axis=1):
+            # if not (next_state_b == np.zeros(state_b.shape)).all(axis=1):
             if not (next_state_b == np.zeros(state_b.shape)).all():
                 # 価値の計算
                 main_q = self.main_q_network.predict([next_state_b])[0]
