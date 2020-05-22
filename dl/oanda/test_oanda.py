@@ -167,11 +167,10 @@ class TestOanda(TestABC):
         return self.complete_episodes > 10
 
     def check_status_is_done(self, state):
-        pass
+        return state is None
 
     def blank_status(self):
-
-        pass
+        return None
 
 
 
