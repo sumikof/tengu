@@ -26,9 +26,12 @@ class BrainDDQN:
             target_action = self.main_q_network.predict([state])[0]
             target_action = target_action * mask
             action = np.argmax(target_action)
+            if not mask[action]:
+                # target_actionが全てマイナスの時用
+                # マイナス評価が多いとに発生する可能性ある
+                action = np.argmin(np.abs(target_action))
         else:
-            action = np.random.choice(self.env.num_actions)  # どれかのアクションを返す
-
+            action = np.random.choice(np.arange(self.env.num_actions)[mask]) # どれかのアクションを返す
         return action
 
     def replay(self):
