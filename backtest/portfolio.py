@@ -71,7 +71,7 @@ class Portfolio:
         trade = Trade(position_type, OPEN, date, deal_rate, amount)
         self.trading.append(trade)
         self.deals = Position(trade)
-        print("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate,self.spread,deal_rate))
+        #print("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate,self.spread,deal_rate))
 
     def close_deal(self, date, rate, amount):
         """
@@ -87,7 +87,7 @@ class Portfolio:
         self.profit += profit
         self.balance += self.current_profit(rate)
         self.deals = None
-        print("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
+        #print("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
 
     def position_rate(self):
         return self.deals.rate
