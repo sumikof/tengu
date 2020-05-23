@@ -1,15 +1,10 @@
-import numpy as np
-
-
 class EnvironmentDDQN:
-    def __init__(self, env, agent, num_episodes=300, max_steps=200):
-        self.env = env
+    def __init__(self, task, agent, num_episodes=300, max_steps=200):
+        self.task = task
         self.agent = agent
         self.num_episodes = num_episodes
         self.max_steps = max_steps
-
-    def conv_tensor(self, state, shape):
-        return np.reshape(state, shape)
+        self.step = 0
 
     def run(self):
 
@@ -19,7 +14,7 @@ class EnvironmentDDQN:
             print("start episode : " + str(self.episode))
 
             # 環境の初期化
-            state = self.env.reset()
+            state = self.task.reset()
 
             done = False
             self.step = 0
@@ -28,10 +23,10 @@ class EnvironmentDDQN:
                     break
 
                 # main networkから行動を決定
-                action = self.agent.get_action(state, self.episode, self.env.mask)
+                action = self.agent.get_action(state, self.episode, self.task.mask)
 
                 # 行動の実行（次の状態と終了判定を取得）
-                next_state, reward, done, _ = self.env.step(action, self)
+                next_state, reward, done, _ = self.task.step(action, self)
 
                 # メモリに追加
                 self.agent.memorize(state, action, next_state, reward)
@@ -48,7 +43,7 @@ class EnvironmentDDQN:
 
                 self.step += 1
 
-            if self.env.is_finish():
+            if self.task.is_finish():
                 print("成功")
                 print("episode: " + str(self.episode))
                 break

@@ -2,8 +2,9 @@ from keras import Model, Input
 from keras.layers import Dense
 from keras.optimizers import Adam
 
-from dl.ddqn.loss_function import huberloss
+from dl.base_rl.loss_function import huberloss
 import numpy as np
+
 
 class SimpleNNet:
     def __init__(self, learning_rate=0.01, state_size=4, action_size=2, hidden_size=10):
@@ -20,16 +21,16 @@ class SimpleNNet:
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
-    def predict(self,input):
-        input = np.reshape(input,[len(input),self.input_size])
-        return self._model.predict(input)
+    def predict(self, x):
+        x = np.reshape(x, [len(x), self.input_size])
+        return self._model.predict(x)
 
-    def train_on_batch(self,x,y):
+    def train_on_batch(self, x, y):
         x = np.reshape(x, [len(x), self.input_size])
         y = np.reshape(y, [len(y), self.output_size])
-        return self._model.train_on_batch(x,y)
+        return self._model.train_on_batch(x, y)
 
-    def set_weights(self,w):
+    def set_weights(self, w):
         return self._model.set_weights(w)
 
     def get_weights(self):

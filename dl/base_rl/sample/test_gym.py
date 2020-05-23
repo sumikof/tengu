@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 
-from dl.test_abc import TestABC
+from dl.base_rl.test_abc import TestABC
 
 
 class TestCartPole(TestABC):
@@ -54,15 +54,15 @@ if __name__ == '__main__':
     test = TestCartPole()
     test.reset()
 
-    from dl.ddqn.environment import EnvironmentDDQN
+    from dl.base_rl.environment import EnvironmentDDQN
 
     ETA = 0.0001  # 学習係数
     learning_rate = ETA
     hidden_size = 32
 
-    from dl.ddqn.agent import AgentDDQN
-    from dl.ddqn.brain import BrainDDQN
-    from dl.ddqn.simple_dqnnet import SimpleNNet
+    from dl.base_rl.agent import AgentDDQN
+    from dl.base_rl.brain import BrainDDQN
+    from dl.base_rl.sample.simple_nnet import SimpleNNet
 
     brain = BrainDDQN(test,
                       main_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size),

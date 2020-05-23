@@ -1,10 +1,10 @@
 from keras import Model, Input
-import keras.backend as K
+import keras.backend as k
 from keras.layers import Dense, Concatenate, Lambda
 from keras.optimizers import Adam
 import numpy as np
 
-from dl.ddqn.loss_function import huberloss
+from dl.base_rl.loss_function import huberloss
 
 
 class DuelingNNet:
@@ -22,7 +22,7 @@ class DuelingNNet:
         adv = Dense(self.output_size)(adv)
 
         model = Concatenate()([v, adv])
-        model = Lambda(lambda a: K.expand_dims(a[:, 0], -1) + a[:, 1:] - K.mean(a[:, 1:], axis=1, keepdims=True),
+        model = Lambda(lambda a: k.expand_dims(a[:, 0], -1) + a[:, 1:] - k.mean(a[:, 1:], axis=1, keepdims=True),
                        output_shape=(self.output_size,))(model)
 
         self._model = Model(inputs=main_input, outputs=model)
@@ -30,39 +30,45 @@ class DuelingNNet:
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
+    def predict(self, x):
+        x = np.reshape(x, [len(x), self.input_size])
+        return self._model.predict(x)
 
-    def predict(self,input):
-        input = np.reshape(input,[len(input),self.input_size])
-        return self._model.predict(input)
-
-    def train_on_batch(self,x,y):
+    def train_on_batch(self, x, y):
         x = np.reshape(x, [len(x), self.input_size])
         y = np.reshape(y, [len(y), self.output_size])
-        return self._model.train_on_batch(x,y)
+        return self._model.train_on_batch(x, y)
 
-    def set_weights(self,w):
+    def set_weights(self, w):
         return self._model.set_weights(w)
 
     def get_weights(self):
         return self._model.get_weights()
 
+
 if __name__ == '__main__':
-    from dl.test_gym import TestCartPole
+    from dl.base_rl.sample.test_gym import TestCartPole
 
     test = TestCartPole()
-    from dl.ddqn.environment import EnvironmentDDQN
+    from dl.base_rl.environment import EnvironmentDDQN
 
     ETA = 0.0001  # 学習係数
-    learning_rate = ETA
-    hidden_size = 32
+    hidden = 32
 
-    from dl.ddqn.agent import AgentDDQN
-    from dl.ddqn.brain import BrainDDQN
+    from dl.base_rl.agent import AgentDDQN
+    from dl.base_rl.brain import BrainDDQN
 
     Net = DuelingNNet
     brain = BrainDDQN(test,
-                      main_network=Net(learning_rate, test.num_status, test.num_actions, hidden_size),
-                      target_network=Net(learning_rate, test.num_status, test.num_actions, hidden_size))
+                      main_network=Net(learning_rate=ETA,
+                                       state_size=test.num_status,
+                                       action_size=test.num_actions,
+                                       hidden_size=hidden),
+                      target_network=Net(learning_rate=ETA,
+                                         state_size=test.num_status,
+                                         action_size=test.num_actions,
+                                         hidden_size=hidden)
+                      )
     agent = AgentDDQN(brain)
     env = EnvironmentDDQN(test, agent)
     env.run()

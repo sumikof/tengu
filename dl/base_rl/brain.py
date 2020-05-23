@@ -1,11 +1,11 @@
-from dl.ddqn.replay_memory import ReplayMemory
+from dl.base_rl.replay_memory import ReplayMemory
 import numpy as np
 
 
 class BrainDDQN:
-    def __init__(self, env, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99):
+    def __init__(self, task, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99):
 
-        self.env = env
+        self.task = task
 
         self.batch_size = batch_size
         self.memory_capacity = memory_capacity
@@ -27,7 +27,7 @@ class BrainDDQN:
             target_action = target_action * mask
             action = np.max(np.argwhere(target_action == np.max(target_action[np.nonzero(target_action)])))
         else:
-            action = np.random.choice(np.arange(self.env.num_actions)[mask]) # どれかのアクションを返す
+            action = np.random.choice(np.arange(self.task.num_actions)[mask])  # どれかのアクションを返す
         return action
 
     def replay(self):
@@ -62,7 +62,7 @@ class BrainDDQN:
         action_values = []
         for i, (state_b, action_b, next_state_b, reward_b) in enumerate(batch):
 
-            if not self.env.check_status_is_done(next_state_b):
+            if not self.task.check_status_is_done(next_state_b):
                 # 価値の計算
                 main_q = self.main_q_network.predict([next_state_b])[0]
                 next_action = np.argmax(main_q)

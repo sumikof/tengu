@@ -1,77 +1,14 @@
-from keras import Model, Input
-from keras.layers import Dense, Concatenate, Conv1D, Lambda
-from keras.optimizers import Adam
-import keras.backend as K
-
-from dl.ddqn.loss_function import huberloss
-
-
-class OandaNNet:
-    def __init__(self, learning_rate=0.01, hidden_size=10):
-        self.output_size = 3
-
-        rates_input = Input(shape=(32,), name='rates_input')
-        current_rate_input = Input(shape=(1,), name='current_rate_input')
-        current_profit_input = Input(shape=(1,), name='current_profit_input')
-        has_deals_input = Input(shape=(1,), name='has_deals_input')
-        main_input = Concatenate()([rates_input, current_rate_input, current_profit_input, has_deals_input])
-
-        hdn = Dense(hidden_size, activation='relu')(main_input)
-
-        v = Dense(hidden_size, activation='relu')(hdn)
-        v = Dense(1)(v)
-
-        adv = Dense(hidden_size, activation='relu')(hdn)
-        adv = Dense(self.output_size)(adv)
-
-        model = Concatenate()([v, adv])
-        model = Lambda(lambda a: K.expand_dims(a[:, 0], -1) + a[:, 1:] - K.mean(a[:, 1:], axis=1, keepdims=True),
-                       output_shape=(self.output_size,))(model)
-
-        self._model = Model(inputs=[rates_input, current_rate_input, current_profit_input, has_deals_input],
-                            outputs=model)
-
-        self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
-        self._model.compile(loss=huberloss, optimizer=self.optimizer)
-
-    def predict(self, input):
-        rates, current_rate, current_profit, has_deals = self.input_data_format(input)
-        return self._model.predict([rates, current_rate, current_profit, has_deals])
-
-    def train_on_batch(self, x, y):
-        rates, current_rate, current_profit, has_deals = self.input_data_format(x)
-        y = np.reshape(y, [len(y), self.output_size])
-        return self._model.train_on_batch([rates, current_rate, current_profit, has_deals], y)
-
-    def set_weights(self, w):
-        return self._model.set_weights(w)
-
-    def get_weights(self):
-        return self._model.get_weights()
-
-    def input_data_format(self, lst):
-        rates = []
-        current_rate = []
-        current_profit = []
-        has_deals = []
-        for s in lst:
-            rates.append(s.rates)
-            current_rate.append(s.current_rate)
-            current_profit.append(s.current_profit)
-            has_deals.append(s.has_deals)
-        return rates, current_rate, current_profit, has_deals
-
-
 import random
 import numpy as np
 from backtest.portfolio import Portfolio
-from common.util import oanda_dataframe
+from oanda_action.oanda_dataframe import oanda_dataframe
 from backtest.portfolio import LONG
 
 from collections import namedtuple
 
-from dl.ddqn.environment import EnvironmentDDQN
-from dl.test_abc import TestABC
+from dl.base_rl.environment import EnvironmentDDQN
+from dl.base_rl.test_abc import TestABC
+from dl.oanda_nnet import OandaNNet
 
 StepState = namedtuple('stepstate', ('rates', 'current_rate', 'current_profit', 'has_deals'))
 
@@ -82,14 +19,27 @@ class TestOanda(TestABC):
 
     def __init__(self, lst):
 
-        self.num_actions = 3 # 取れる行動の数 0:何もしない 1:deal 2:close
+        self.num_actions = 3  # 取れる行動の数 0:何もしない 1:deal 2:close
         self.data_size = 32
         self.num_status = 64  # 状態を表す変数の数
         self.batch_size = 300
         self.lst = lst
         self.complete_episodes = 0
         self.portfolio = None
+
+        self.portfolio = None
+        self.batch = None
+        self.index = 0
+        self.end_index = 0
         self.reset()
+
+    def reset(self):
+        self.portfolio = Portfolio(spread=0.018)
+        self.portfolio.deposit(10000)
+        self.batch = self._minibatch()
+        self.index = 0
+        self.end_index = self.index + self.data_size - 1
+        return self._getstate()
 
     @property
     def mask(self):
@@ -109,22 +59,14 @@ class TestOanda(TestABC):
         random_index = random.randint(0, len(self.lst) - self.batch_size)
         return self.lst[random_index:random_index + self.batch_size]
 
-    def reset(self):
-        self.portfolio = Portfolio(spread=0.018)
-        self.portfolio.deposit(10000)
-        self.batch = self._minibatch()
-        self.index = 0
-        self.endindex = self.index + self.data_size - 1
-        return self._getstate()
-
     def _add_index(self):
         self.index += 1
-        self.endindex += 1
-        done = self.endindex >= self.batch_size - 1
+        self.end_index += 1
+        done = self.end_index >= self.batch_size - 1
         return done
 
     def _get_rate(self):
-        return self.batch[self.endindex]
+        return self.batch[self.end_index]
 
     def _losscut(self):
         """強制ロスカット"""
@@ -145,7 +87,7 @@ class TestOanda(TestABC):
             if self.portfolio.has_deals():
                 print("position あるのに買ってるよ")
                 print("mask : " + str(self.mask))
-                print(env.env.portfolio.has_deals())
+                print(env.task.portfolio.has_deals())
                 # すでにpositionある
                 raise NotImplementedError
             else:
@@ -158,7 +100,7 @@ class TestOanda(TestABC):
             else:
                 print("position ないのに決済してるよ")
                 print("mask : " + str(self.mask))
-                print(env.env.portfolio.has_deals())
+                print(env.task.portfolio.has_deals())
                 raise NotImplementedError
 
         if not done:
@@ -184,9 +126,6 @@ class TestOanda(TestABC):
         return None
 
 
-
-
-
 if __name__ == '__main__':
     df_org = oanda_dataframe('../USD_JPY_M1.csv')
     test = TestOanda(df_org['close'].values)
@@ -195,12 +134,12 @@ if __name__ == '__main__':
     learning_rate = ETA
     hidden_size = 32
 
-    from dl.ddqn.agent import AgentDDQN
-    from dl.ddqn.brain import BrainDDQN
+    from dl.base_rl.agent import AgentDDQN
+    from dl.base_rl.brain import BrainDDQN
 
     brain = BrainDDQN(test,
                       main_network=OandaNNet(learning_rate, hidden_size),
-                      target_network=OandaNNet(learning_rate,  hidden_size))
+                      target_network=OandaNNet(learning_rate, hidden_size))
     agent = AgentDDQN(brain)
     env = EnvironmentDDQN(test, agent, max_steps=0)
     env.run()

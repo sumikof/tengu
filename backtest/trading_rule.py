@@ -1,5 +1,5 @@
 from backtest.portfolio import Portfolio
-from common.util import nowtimestr
+from oanda_action.oanda_dataframe import nowtimestr
 from backtest.rule import OrderRule
 
 
