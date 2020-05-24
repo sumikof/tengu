@@ -1,4 +1,3 @@
-from dl import util
 from oanda_api import oanda_rest_api
 
 
@@ -69,18 +68,26 @@ import matplotlib.pyplot as plt
 
 def main():
     from oanda_action.oanda_dataframe import oanda_dataframe
-    df = oanda_dataframe()
-    #    from dl import sample_rnn
-    #    sample_rnn.odlprint()
-    # df = df[df['date'].dt.minute % 5 == 0]
-    # df = df.tail(4000)
-    # print(df.tail(5))
-    df = df.drop('date', axis=1)[["close"]]
+    from dl.test_oanda import TestOanda
+    from dl.base_rl.agent import AgentDDQN
+    from dl.base_rl.brain import BrainDDQN
+    from dl.oanda_nnet import OandaNNet
 
-    df = util.standard_0_1(df)
-    df = df.rolling(window=5).mean().dropna()
-    # fig(df)
-    # df = df.apply(stats.zscore, axis=0)
+    df_org = oanda_dataframe('USD_JPY_M1.csv')
+    test = TestOanda(df_org['close'].values)
+
+    ETA = 0.0001  # 学習係数
+    learning_rate = ETA
+    hidden_size = 32
+
+    brain = BrainDDQN(test,
+                      main_network=OandaNNet(learning_rate, hidden_size),
+                      target_network=OandaNNet(learning_rate, hidden_size))
+    agent = AgentDDQN(brain)
+
+    from dl.base_rl.environment import EnvironmentDDQN
+    env = EnvironmentDDQN(test, agent,num_episodes=500, max_steps=0)
+    env.run()
 
 
 def fig(df):

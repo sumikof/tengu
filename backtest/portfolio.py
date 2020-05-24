@@ -43,12 +43,12 @@ class Portfolio:
     trading = []
     deals = None
     profit = 0
-    balance = 0
+    _balance = 0
     spread = 0
 
     def __init__(self, spread=0.0, deposit=0):
         self.spread = spread
-        self.balance = deposit
+        self._balance = deposit
 
     def deposit(self, dep):
         """
@@ -56,7 +56,7 @@ class Portfolio:
         :param equity:
         :return:
         """
-        self.balance = dep
+        self._balance = dep
 
     def deal(self, date, position_type, rate, amount):
         """
@@ -82,7 +82,6 @@ class Portfolio:
         """
         trade = Trade(self.deals.position_type, CLOSE, date, rate, amount)
         self.trading.append(trade)
-        position_rate = self.deals.rate
         profit = self.current_profit(rate)
         self.profit += profit
         self.balance += self.current_profit(rate)
@@ -92,13 +91,24 @@ class Portfolio:
     def position_rate(self):
         return self.deals.rate
 
+    def has_deals(self):
+        return self.deals is not None
+
+    @property
+    def balance(self):
+        return self._balance
+
+    @balance.setter
+    def balance(self, new_balance):
+        self._balance = new_balance
+
     def current_profit(self, rate):
         if self.has_deals():
             return int(self.deals.value(rate))
         return 0
 
-    def has_deals(self):
-        return self.deals is not None
+    def current_balance(self, rate):
+        return self.balance + self.current_profit(rate)
 
 
 if __name__ == '__main__':

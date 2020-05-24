@@ -1,16 +1,16 @@
 import random
 import numpy as np
 from backtest.portfolio import Portfolio
-from oanda_action.oanda_dataframe import oanda_dataframe
 from backtest.portfolio import LONG
 
 from collections import namedtuple
 
-from dl.base_rl.environment import EnvironmentDDQN
 from dl.base_rl.test_abc import TestABC
-from dl.oanda_nnet import OandaNNet
 
 StepState = namedtuple('stepstate', ('rates', 'current_rate', 'current_profit', 'has_deals'))
+
+BATCH_SIZE_PER_EPISODE = 60 * 24
+RATE_DATA_SIZE = 32
 
 
 class TestOanda(TestABC):
@@ -20,9 +20,8 @@ class TestOanda(TestABC):
     def __init__(self, lst):
 
         self.num_actions = 3  # 取れる行動の数 0:何もしない 1:deal 2:close
-        self.data_size = 32
-        self.num_status = 64  # 状態を表す変数の数
-        self.batch_size = 300
+        self.data_size = RATE_DATA_SIZE
+        self.batch_size = BATCH_SIZE_PER_EPISODE
         self.lst = lst
         self.complete_episodes = 0
         self.portfolio = None
@@ -31,6 +30,7 @@ class TestOanda(TestABC):
         self.batch = None
         self.index = 0
         self.end_index = 0
+        self.total_reward = 0
         self.reset()
 
     def reset(self):
@@ -39,6 +39,7 @@ class TestOanda(TestABC):
         self.batch = self._minibatch()
         self.index = 0
         self.end_index = self.index + self.data_size - 1
+        self.total_reward = 0
         return self._getstate()
 
     @property
@@ -87,28 +88,52 @@ class TestOanda(TestABC):
             if self.portfolio.has_deals():
                 print("position あるのに買ってるよ")
                 print("mask : " + str(self.mask))
-                print(env.task.portfolio.has_deals())
+                print(self.portfolio.has_deals())
                 # すでにpositionある
                 raise NotImplementedError
             else:
-                self.portfolio.deal(environment.step, LONG, self._get_rate(), 100)
+                # print("step is {} open deal,rate {}".format(environment.step,self._get_rate()))
+                rate = self._get_rate()
+                balance = self.portfolio.balance
+                leverage = 100
+                lot = 1000
+                margin = balance * leverage
+                import math
+                amount = math.floor(margin / rate / lot) * lot
+                if amount < 1:
+                    done = True
+                else:
+                    self.portfolio.deal(environment.step, LONG, self._get_rate(), amount)
+                    #print(self.portfolio.trading[-1])
         else:  # close
             if self.portfolio.has_deals():
                 # すでにpositionある
-                reward = self._profit()
-                self.portfolio.close_deal(environment.step, self._get_rate(), 100)
+                reward = self._profit() * 10
+                # print("step is {} close deal,rate {} ,reward {}".format(environment.step, self._get_rate(),reward))
+                self.portfolio.close_deal(environment.step, self._get_rate(), self.portfolio.deals.amount)
+                #print(self.portfolio.trading[-1])
             else:
                 print("position ないのに決済してるよ")
                 print("mask : " + str(self.mask))
-                print(env.task.portfolio.has_deals())
+                print(self.portfolio.has_deals())
                 raise NotImplementedError
 
         if not done:
             done = self._add_index()
+            if self.portfolio.has_deals() and self.portfolio.current_balance(self._get_rate()) < 0:
+                # 強制ロスカット
+                done = True
+                reward = -10
+
+        self.total_reward += reward
 
         if done:
+            if len(self.portfolio.trading) == 0:
+                reward = -10
+                self.total_reward += reward
             next_state = self.blank_status()
-            print("step finish balance : " + str(self.portfolio.balance))
+            print("step index {} ,trading num {} ,finish total_reward {} last balance".format(
+                self.index,len(self.portfolio.trading),self.total_reward),self.portfolio.balance)
         else:
             next_state = self._getstate()
 
@@ -125,8 +150,8 @@ class TestOanda(TestABC):
     def blank_status(self):
         return None
 
-
-if __name__ == '__main__':
+def test_execute():
+    from oanda_action.oanda_dataframe import oanda_dataframe
     df_org = oanda_dataframe('../USD_JPY_M1.csv')
     test = TestOanda(df_org['close'].values)
 
@@ -136,10 +161,16 @@ if __name__ == '__main__':
 
     from dl.base_rl.agent import AgentDDQN
     from dl.base_rl.brain import BrainDDQN
-
+    from dl.oanda_nnet import OandaNNet
     brain = BrainDDQN(test,
                       main_network=OandaNNet(learning_rate, hidden_size),
                       target_network=OandaNNet(learning_rate, hidden_size))
     agent = AgentDDQN(brain)
-    env = EnvironmentDDQN(test, agent, max_steps=0)
+
+    from dl.base_rl.environment import EnvironmentDDQN
+    env = EnvironmentDDQN(test, agent,num_episodes=500, max_steps=0)
     env.run()
+
+
+if __name__ == '__main__':
+    test_execute()

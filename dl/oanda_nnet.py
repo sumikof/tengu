@@ -4,6 +4,7 @@ from keras.optimizers import Adam
 import keras.backend as k
 from numpy import reshape
 from dl.base_rl.loss_function import huberloss
+from dl.test_oanda import RATE_DATA_SIZE
 
 
 def input_data_format(lst):
@@ -23,11 +24,19 @@ class OandaNNet:
     def __init__(self, learning_rate=0.01, hidden_size=10):
         self.output_size = 3
 
-        rates_input = Input(shape=(32,), name='rates_input')
+        rates_input = Input(shape=(RATE_DATA_SIZE,), name='rates_input')
+        rate = Dense(32)(rates_input)
+
         current_rate_input = Input(shape=(1,), name='current_rate_input')
+        current_rate = Dense(32)(current_rate_input)
+
         current_profit_input = Input(shape=(1,), name='current_profit_input')
+        current_profit = Dense(32)(current_profit_input)
+
         has_deals_input = Input(shape=(1,), name='has_deals_input')
-        main_input = Concatenate()([rates_input, current_rate_input, current_profit_input, has_deals_input])
+        #has_deals = Dense(32)(has_deals_input)
+
+        main_input = Concatenate()([rate, current_rate, current_profit, has_deals_input])
 
         hdn = Dense(hidden_size, activation='relu')(main_input)
 
