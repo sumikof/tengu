@@ -40,15 +40,14 @@ class Position:
 
 
 class Portfolio:
-    trading = []
-    deals = None
-    profit = 0
-    _balance = 0
-    spread = 0
+
 
     def __init__(self, spread=0.0, deposit=0):
         self.spread = spread
         self._balance = deposit
+        self.trading = []
+        self.deals = None
+        self.profit = 0
 
     def deposit(self, dep):
         """
@@ -57,6 +56,11 @@ class Portfolio:
         :return:
         """
         self._balance = dep
+
+    def reset(self):
+        self.trading = []
+        self.deals = None
+        self.profit = 0
 
     def deal(self, date, position_type, rate, amount):
         """

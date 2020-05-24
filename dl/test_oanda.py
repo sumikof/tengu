@@ -24,9 +24,8 @@ class TestOanda(TestABC):
         self.batch_size = BATCH_SIZE_PER_EPISODE
         self.lst = lst
         self.complete_episodes = 0
-        self.portfolio = None
+        self.portfolio = Portfolio(spread=0.018)
 
-        self.portfolio = None
         self.batch = None
         self.index = 0
         self.end_index = 0
@@ -34,7 +33,7 @@ class TestOanda(TestABC):
         self.reset()
 
     def reset(self):
-        self.portfolio = Portfolio(spread=0.018)
+        self.portfolio.reset()
         self.portfolio.deposit(10000)
         self.batch = self._minibatch()
         self.index = 0
