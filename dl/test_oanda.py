@@ -1,12 +1,15 @@
 import random
 import copy
+import math
 import numpy as np
+import msglogger as msg
 from backtest.portfolio import Portfolio
 from backtest.portfolio import LONG, SHORT
 
 from collections import namedtuple
 
 from dl.base_rl.test_abc import TestABC
+from msglogger import printmsg, msg
 
 StepState = namedtuple('stepstate', ('rates', 'position'))
 
@@ -84,6 +87,18 @@ class TestOanda(TestABC):
         else:
             return self.non_position_mask
 
+    @property
+    def blank_status(self):
+        return None
+
+    @property
+    def current_rate(self):
+        return self.batch[self.end_index]
+
+    @property
+    def profit_reward(self):
+        return self._profit() * 10
+
     def _getstate(self):
 
         if self.portfolio.deals is None:
@@ -95,10 +110,10 @@ class TestOanda(TestABC):
         else:
             print("そんなポジション認められてませーん")
             raise NotImplementedError
-        position = position * self.portfolio.current_profit(self._get_current_rate())
+        position = position * self.portfolio.current_profit(self.current_rate)
 
         state = StepState(copy.copy(self.rate_map),
-                          np.append(position,self._get_current_rate()))
+                          np.append(position, self.current_rate))
         return state
 
     def _minibatch(self):
@@ -115,84 +130,66 @@ class TestOanda(TestABC):
     def _get_rates(self):
         return self.batch[self.index:self.index + self.data_size]
 
-    def _get_current_rate(self):
-        return self.batch[self.end_index]
-
     def _losscut(self):
         """強制ロスカット"""
-        self.portfolio.current_profit(self._get_current_rate())
+        self.portfolio.current_profit(self.current_rate)
         return False
 
     def _profit(self):
         position_rate = self.portfolio.position_rate()
-        current_rate = self._get_current_rate()
+        current_rate = self.current_rate
         return (current_rate / position_rate - 1) * 100
 
-    def step(self, action, environment):
+    def step(self, action, env):
         reward = 0
         done = False
         if action == 0:
             pass
         elif action == 1:  # deal
             if self.portfolio.has_deals():
-                print("position あるのに買建してるよ")
-                print("mask : " + str(self.mask))
-                print(self.portfolio.has_deals())
                 # すでにpositionある
+                printmsg(msg.error_msg, "position あるのに買建してるよ")
                 raise NotImplementedError
+
+            amount = self.calc_deal_amount()
+            printmsg(msg.action_msg,
+                     "step is {} open long deal,rate {}, amount".format(env.step, self.current_rate, amount))
+            if amount < 1:
+                done = True
             else:
-                log("step is {} open long deal,rate {}".format(environment.step, self._get_current_rate()))
-                rate = self._get_current_rate()
-                balance = self.portfolio.balance
-                leverage = 100
-                lot = 1000
-                margin = balance * leverage
-                import math
-                amount = math.floor(margin / rate / lot) * lot
-                if amount < 1:
-                    done = True
-                else:
-                    self.portfolio.deal(environment.step, LONG, self._get_current_rate(), amount)
-                    # print(self.portfolio.trading[-1])
+                self.portfolio.deal(env.step, LONG, self.current_rate, amount)
+
         elif action == 2:  # deal
             if self.portfolio.has_deals():
-                print("position あるのに売建してるよ")
-                print("mask : " + str(self.mask))
-                print(self.portfolio.has_deals())
                 # すでにpositionある
+                printmsg(msg.error_msg, "position あるのに売建してるよ")
                 raise NotImplementedError
+
+            amount = self.calc_deal_amount()
+            printmsg(msg.action_msg,
+                     "step is {} open short deal,rate {},amount".format(env.step, self.current_rate, amount))
+            if amount < 1:
+                done = True
             else:
-                log("step is {} open short deal,rate {}".format(environment.step, self._get_current_rate()))
-                rate = self._get_current_rate()
-                balance = self.portfolio.balance
-                leverage = 100
-                lot = 1000
-                margin = balance * leverage
-                import math
-                amount = math.floor(margin / rate / lot) * lot
-                if amount < 1:
-                    done = True
-                else:
-                    self.portfolio.deal(environment.step, SHORT, self._get_current_rate(), amount)
+                self.portfolio.deal(env.step, SHORT, self.current_rate, amount)
 
         else:  # close
-            if self.portfolio.has_deals():
-                # すでにpositionある
-                reward = self._profit() * 10
-                log("step is {} close deal,rate {} ,reward {}".format(environment.step, self._get_current_rate(),
-                                                                        reward))
-                self.portfolio.close_deal(environment.step, self._get_current_rate(), self.portfolio.deals.amount)
-
-            else:
-                print("position ないのに決済してるよ")
-                print("mask : " + str(self.mask))
-                print(self.portfolio.has_deals())
+            if not self.portfolio.has_deals():
+                # ポジションない
+                print(msg.error_msg, "position ないのに決済してるよ")
                 raise NotImplementedError
+
+            # ポジションを決済
+            reward = self.profit_reward
+            printmsg(msg.action_msg,
+                     "step is {} close deal,rate {} ,reward {}".format(env.step, self.current_rate,
+                                                                       reward))
+            self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
         if not done:
             done = self._add_index()
-            if self.portfolio.has_deals() and self.portfolio.current_balance(self._get_current_rate()) < 0:
-                # 強制ロスカット
+            if self.portfolio.has_deals() and self.portfolio.current_balance(self.current_rate) < 0:
+                # 強制ロスカット,罰則
                 done = True
                 reward = -10
 
@@ -200,17 +197,19 @@ class TestOanda(TestABC):
 
         if done:
             if len(self.portfolio.trading) == 0:
+                # 一回も取引していない場合は罰則
                 reward = -10
                 self.total_reward += reward
 
             if self.portfolio.has_deals():
-                # すでにpositionある
-                reward = self._profit() * 10
-                log("finish close deal,rate {} ,reward {}".format(self._get_current_rate(), reward))
-                self.portfolio.close_deal(environment.step, self._get_current_rate(), self.portfolio.deals.amount)
+                # ポジション持ったまま終了 -> 決済して終わり
+                reward = self.profit_reward
+                self.total_reward += reward
 
+                printmsg(msg.step_msg, "finish close deal,rate {} ,reward {}".format(self.current_rate, reward))
+                self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
-            next_state = self.blank_status()
+            next_state = self.blank_status
             print("step index {} ,trading num {} ,finish total_reward {} last balance".format(
                 self.index, len(self.portfolio.trading), self.total_reward), self.portfolio.balance)
         else:
@@ -226,29 +225,32 @@ class TestOanda(TestABC):
     def check_status_is_done(self, state):
         return state is None
 
-    def blank_status(self):
-        return None
+    def calc_deal_amount(self):
+        rate = self.current_rate
+        balance = self.portfolio.balance
+        leverage = 100
+        lot = 1000
+        margin = balance * leverage
+        amount = math.floor(margin / rate / lot) * lot
 
-def log(msg):
-    #print(msg)
-    pass
+        return amount
+
 
 def test_execute():
     from oanda_action.oanda_dataframe import oanda_dataframe
-    df_org = oanda_dataframe('../USD_JPY_M1.csv')
-    rate_size = 64
-    test = TestOanda(df_org['close'].values, (60 * 24*5), rate_size)
-
-    ETA = 0.0001  # 学習係数
-    learning_rate = ETA
-    hidden_size = 32
-
     from dl.base_rl.agent import AgentDDQN
     from dl.base_rl.brain import BrainDDQN
     from dl.oanda_nnet import OandaNNet
+
+    df_org = oanda_dataframe('../USD_JPY_M1.csv')
+    rate_size = 64
+    test = TestOanda(df_org['close'].values, (60 * 24 * 5), rate_size)
+
+    eta = 0.0001  # 学習係数
+
     brain = BrainDDQN(test,
-                      main_network=OandaNNet(learning_rate, hidden_size, rate_size=rate_size),
-                      target_network=OandaNNet(learning_rate, hidden_size, rate_size=rate_size))
+                      main_network=OandaNNet(learning_rate=eta, rate_size=rate_size),
+                      target_network=OandaNNet(learning_rate=eta, rate_size=rate_size))
     agent = AgentDDQN(brain)
 
     from dl.base_rl.environment import EnvironmentDDQN

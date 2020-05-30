@@ -8,7 +8,7 @@ from dl.test_oanda import StepState, ACTION_SIZE
 
 
 class OandaNNet:
-    def __init__(self, learning_rate=0.01, hidden_size=10, rate_size=32, position_size=3):
+    def __init__(self, learning_rate=0.01, rate_size=32, position_size=3):
         self.output_size = ACTION_SIZE
         self.input_rate_size = rate_size
         self.input_position_size = position_size
@@ -30,12 +30,12 @@ class OandaNNet:
         main_input = Concatenate()([rate, position])
         main_input = Dense(128)(main_input)
 
-        hdn = Dense(hidden_size, activation='relu')(main_input)
+        hdn = Dense(32, activation='relu')(main_input)
 
-        v = Dense(hidden_size, activation='relu')(hdn)
+        v = Dense(32, activation='relu')(hdn)
         v = Dense(1)(v)
 
-        adv = Dense(hidden_size, activation='relu')(hdn)
+        adv = Dense(32, activation='relu')(hdn)
         adv = Dense(self.output_size)(adv)
 
         model = Concatenate()([v, adv])
