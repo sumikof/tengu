@@ -1,42 +1,34 @@
 from keras import Model, Input
-from keras.layers import Dense, Concatenate, Lambda
+from keras.layers import Dense, Concatenate, Lambda, Conv2D, Activation, MaxPooling2D, Dropout, Flatten, LSTM
 from keras.optimizers import Adam
 import keras.backend as k
-from numpy import reshape
+import numpy as  np
 from dl.base_rl.loss_function import huberloss
-from dl.test_oanda import RATE_DATA_SIZE
-
-
-def input_data_format(lst):
-    rates = []
-    current_rate = []
-    current_profit = []
-    has_deals = []
-    for s in lst:
-        rates.append(s.rates)
-        current_rate.append(s.current_rate)
-        current_profit.append(s.current_profit)
-        has_deals.append(s.has_deals)
-    return rates, current_rate, current_profit, has_deals
+from dl.test_oanda import StepState, ACTION_SIZE
 
 
 class OandaNNet:
-    def __init__(self, learning_rate=0.01, hidden_size=10):
-        self.output_size = 3
+    def __init__(self, learning_rate=0.01, hidden_size=10, rate_size=32, position_size=3):
+        self.output_size = ACTION_SIZE
+        self.input_rate_size = rate_size
+        self.input_position_size = position_size
 
-        rates_input = Input(shape=(RATE_DATA_SIZE,), name='rates_input')
-        rate = Dense(32)(rates_input)
+        rates_input = Input(shape=(self.input_rate_size, self.input_rate_size, 1), name='rates_input')
+        rate = Conv2D(64, kernel_size=(3, 3))(rates_input)
+        rate = Activation('relu')(rate)
+        rate = Conv2D(64, kernel_size=(3, 3))(rate)
+        rate = Activation('relu')(rate)
+        rate = MaxPooling2D(pool_size=(2, 2))(rate)
+        rate = Dropout(0.25)(rate)
+        rate = Dense(64, activation='relu')(rate)
+        rate = Flatten()(rate)
 
-        current_rate_input = Input(shape=(1,), name='current_rate_input')
-        current_rate = Dense(32)(current_rate_input)
+        position_input = Input(shape=(self.input_position_size,), name='position_input')
+        position = Dense(64)(position_input)
+        position = Dense(32)(position)
 
-        current_profit_input = Input(shape=(1,), name='current_profit_input')
-        current_profit = Dense(32)(current_profit_input)
-
-        has_deals_input = Input(shape=(1,), name='has_deals_input')
-        #has_deals = Dense(32)(has_deals_input)
-
-        main_input = Concatenate()([rate, current_rate, current_profit, has_deals_input])
+        main_input = Concatenate()([rate, position])
+        main_input = Dense(128)(main_input)
 
         hdn = Dense(hidden_size, activation='relu')(main_input)
 
@@ -50,20 +42,30 @@ class OandaNNet:
         model = Lambda(lambda a: k.expand_dims(a[:, 0], -1) + a[:, 1:] - k.mean(a[:, 1:], axis=1, keepdims=True),
                        output_shape=(self.output_size,))(model)
 
-        self._model = Model(inputs=[rates_input, current_rate_input, current_profit_input, has_deals_input],
+        self._model = Model(inputs=[rates_input, position_input],
                             outputs=model)
 
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
+    def input_data_format(self, lst):
+        rates = []
+        positions = []
+        for s in lst:
+            rate = np.reshape(s.rates.map, (self.input_rate_size, self.input_rate_size, 1))
+            rates.append(rate)
+
+            positions.append(s.position)
+        return rates, positions
+
     def predict(self, x):
-        rates, current_rate, current_profit, has_deals = input_data_format(x)
-        return self._model.predict([rates, current_rate, current_profit, has_deals])
+        rates, positions = self.input_data_format(x)
+        return self._model.predict([rates, positions])
 
     def train_on_batch(self, x, y):
-        rates, current_rate, current_profit, has_deals = input_data_format(x)
-        y = reshape(y, [len(y), self.output_size])
-        return self._model.train_on_batch([rates, current_rate, current_profit, has_deals], y)
+        rates, positions = self.input_data_format(x)
+        y = np.reshape(y, [len(y), self.output_size])
+        return self._model.train_on_batch([rates, positions], y)
 
     def set_weights(self, w):
         return self._model.set_weights(w)

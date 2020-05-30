@@ -74,15 +74,16 @@ def main():
     from dl.oanda_nnet import OandaNNet
 
     df_org = oanda_dataframe('USD_JPY_M1.csv')
-    test = TestOanda(df_org['close'].values)
+    rate_size = 64
+    test = TestOanda(df_org['close'].values, (60 * 24*5), rate_size)
 
     ETA = 0.0001  # 学習係数
     learning_rate = ETA
     hidden_size = 32
 
     brain = BrainDDQN(test,
-                      main_network=OandaNNet(learning_rate, hidden_size),
-                      target_network=OandaNNet(learning_rate, hidden_size))
+                      main_network=OandaNNet(learning_rate, hidden_size, rate_size=rate_size),
+                      target_network=OandaNNet(learning_rate, hidden_size, rate_size=rate_size))
     agent = AgentDDQN(brain)
 
     from dl.base_rl.environment import EnvironmentDDQN
