@@ -2,7 +2,7 @@ import pandas as pd
 import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.pricing as pricing
-from oanda_api import strformatdate
+from tengu.oanda_api import strformatdate
 
 
 def create_csv(account,instrument,from_date):

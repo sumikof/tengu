@@ -2,14 +2,13 @@ import random
 import copy
 import math
 import numpy as np
-import msglogger as msg
-from backtest.portfolio import Portfolio
-from backtest.portfolio import LONG, SHORT
+from tengu.backtest.portfolio import Portfolio
+from tengu.backtest.portfolio import LONG, SHORT
 
 from collections import namedtuple
 
-from dl.base_rl.test_abc import TestABC
-from msglogger import printmsg, msg
+from tengu.drlfx.base_rl.test_abc import TestABC
+from tengu.msglogger import printmsg, msg
 
 StepState = namedtuple('stepstate', ('rates', 'position'))
 
@@ -238,12 +237,12 @@ class TestOanda(TestABC):
 
 
 def test_execute():
-    from oanda_action.oanda_dataframe import oanda_dataframe
-    from dl.base_rl.agent import AgentDDQN
-    from dl.base_rl.brain import BrainDDQN
-    from dl.oanda_nnet import OandaNNet
+    from tengu.oanda_action.oanda_dataframe import oanda_dataframe
+    from tengu.drlfx.base_rl.agent import AgentDDQN
+    from tengu.drlfx.base_rl.brain import BrainDDQN
+    from tengu.drlfx.oanda_nnet import OandaNNet
 
-    df_org = oanda_dataframe('../USD_JPY_M1.csv')
+    df_org = oanda_dataframe('../../USD_JPY_M1.csv')
     rate_size = 64
     test = TestOanda(df_org['close'].values, (60 * 24), rate_size)
 
@@ -254,7 +253,7 @@ def test_execute():
                       target_network=OandaNNet(learning_rate=eta, rate_size=rate_size))
     agent = AgentDDQN(brain)
 
-    from dl.base_rl.environment import EnvironmentDDQN
+    from tengu.drlfx.base_rl.environment import EnvironmentDDQN
     env = EnvironmentDDQN(test, agent, num_episodes=500, max_steps=0)
 
     msg.action_msg = True

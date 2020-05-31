@@ -3,8 +3,8 @@ from keras.layers import Dense, Concatenate, Lambda, Conv2D, Activation, MaxPool
 from keras.optimizers import Adam
 import keras.backend as k
 import numpy as  np
-from dl.base_rl.loss_function import huberloss
-from dl.test_oanda import StepState, ACTION_SIZE
+from tengu.drlfx.base_rl.loss_function import huberloss
+from tengu.drlfx.test_oanda import StepState, ACTION_SIZE
 
 
 class OandaNNet:

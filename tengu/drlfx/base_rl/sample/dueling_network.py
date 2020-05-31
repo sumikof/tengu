@@ -4,7 +4,7 @@ from keras.layers import Dense, Concatenate, Lambda
 from keras.optimizers import Adam
 import numpy as np
 
-from dl.base_rl.loss_function import huberloss
+from tengu.drlfx.base_rl.loss_function import huberloss
 
 
 class DuelingNNet:
@@ -47,16 +47,16 @@ class DuelingNNet:
 
 
 if __name__ == '__main__':
-    from dl.base_rl.sample.test_gym import TestCartPole
+    from tengu.drlfx.base_rl.sample.test_gym import TestCartPole
 
     test = TestCartPole()
-    from dl.base_rl.environment import EnvironmentDDQN
+    from tengu.drlfx.base_rl.environment import EnvironmentDDQN
 
     ETA = 0.0001  # 学習係数
     hidden = 32
 
-    from dl.base_rl.agent import AgentDDQN
-    from dl.base_rl.brain import BrainDDQN
+    from tengu.drlfx.base_rl.agent import AgentDDQN
+    from tengu.drlfx.base_rl.brain import BrainDDQN
 
     Net = DuelingNNet
     brain = BrainDDQN(test,

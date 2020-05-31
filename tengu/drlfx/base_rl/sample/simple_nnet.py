@@ -2,7 +2,7 @@ from keras import Model, Input
 from keras.layers import Dense
 from keras.optimizers import Adam
 
-from dl.base_rl.loss_function import huberloss
+from tengu.drlfx.base_rl.loss_function import huberloss
 import numpy as np
 
 

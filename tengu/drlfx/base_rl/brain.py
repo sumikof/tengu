@@ -1,4 +1,4 @@
-from dl.base_rl.replay_memory import ReplayMemory
+from tengu.drlfx.base_rl.replay_memory import ReplayMemory
 import numpy as np
 
 

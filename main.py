@@ -1,4 +1,4 @@
-from oanda_api import oanda_rest_api
+from tengu.oanda_api import oanda_rest_api
 
 
 class oanda_rest_json:
@@ -16,12 +16,12 @@ def rest_action(account):
 
 
 def create_ex_csv(account):
-    from oanda_action.create_csv import create_csv
+    from tengu.oanda_action.create_csv import create_csv
     create_csv(account, instrument="USD_JPY", from_date="2020-01-01T00:00:00")
 
 
 def get_account():
-    from oanda_api.account import create_account
+    from tengu.oanda_api.account import create_account
     account = create_account('oanda.conf')
     return account
 
@@ -67,11 +67,11 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    from oanda_action.oanda_dataframe import oanda_dataframe
-    from dl.test_oanda import TestOanda
-    from dl.base_rl.agent import AgentDDQN
-    from dl.base_rl.brain import BrainDDQN
-    from dl.oanda_nnet import OandaNNet
+    from tengu.oanda_action.oanda_dataframe import oanda_dataframe
+    from tengu.drlfx.test_oanda import TestOanda
+    from tengu.drlfx.base_rl.agent import AgentDDQN
+    from tengu.drlfx.base_rl.brain import BrainDDQN
+    from tengu.drlfx.oanda_nnet import OandaNNet
 
     df_org = oanda_dataframe('USD_JPY_M1.csv')
     rate_size = 64
@@ -84,7 +84,7 @@ def main():
                       target_network=OandaNNet(learning_rate=eta, rate_size=rate_size))
     agent = AgentDDQN(brain)
 
-    from dl.base_rl.environment import EnvironmentDDQN
+    from tengu.drlfx.base_rl.environment import EnvironmentDDQN
     env = EnvironmentDDQN(test, agent, num_episodes=500, max_steps=0)
     env.run()
 

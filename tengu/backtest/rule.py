@@ -1,4 +1,4 @@
-from backtest.portfolio import LONG
+from tengu.backtest.portfolio import LONG
 
 class RuleBase:
     def __init__(self,port):

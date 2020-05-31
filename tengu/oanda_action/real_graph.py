@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from datetime import timedelta
-from oanda_api import strformatdate
+from tengu.oanda_api import strformatdate
 
 class oanda_action:
 
@@ -39,7 +39,7 @@ class oanda_action:
         plt.pause(0.01)
 
 def read_print(account):
-    from oanda_api import oanda_stream_api, oanda_rest_api
+    from tengu.oanda_api import oanda_stream_api, oanda_rest_api
     a = oanda_action()
     oanda_rest_api(account, instrument="USD_JPY", action=a.init_rate, count=100, granularity="S5")
     a.init_graph()

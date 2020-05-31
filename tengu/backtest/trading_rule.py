@@ -1,6 +1,5 @@
-from backtest.portfolio import Portfolio
-from oanda_action.oanda_dataframe import nowtimestr
-from backtest.rule import OrderRule
+from tengu.backtest.portfolio import Portfolio
+from tengu.backtest.rule import OrderRule
 
 
 class LongOnlyFullOrder(OrderRule):
@@ -34,12 +33,12 @@ if __name__ == '__main__':
         for rate in test_data:
             if rule.has_deals():
                 if random.choice(branch):
-                    rule.close_deal(nowtimestr(), rate)
+                    rule.close_deal("", rate)
                 else:
                     pass
             else:
                 if random.choice(branch):
-                    rule.deal(nowtimestr(),rate)
+                    rule.deal("",rate)
                 else:
                     pass
             if rule.portfolio.balance < 0:
