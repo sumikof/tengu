@@ -25,7 +25,6 @@ class OandaNNet:
 
         position_input = Input(shape=(self.input_position_size,), name='position_input')
         position = Dense(64)(position_input)
-        position = Dense(32)(position)
 
         main_input = Concatenate()([rate, position])
         main_input = Dense(128)(main_input)

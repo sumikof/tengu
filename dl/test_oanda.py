@@ -54,7 +54,7 @@ class TestOanda(TestABC):
         self.num_actions = ACTION_SIZE  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
         self.data_size = rate_size
         self.batch_size = batch_size
-        self.lst = lst
+        self.rate_lst = lst
         self.complete_episodes = 0
         self.portfolio = Portfolio(spread=0.018)
 
@@ -78,7 +78,7 @@ class TestOanda(TestABC):
         self.rate_map.push(self._get_rates())
         for i in range(self.data_size):
             self._add_index()
-        return self._getstate()
+        return self.state
 
     @property
     def mask(self):
@@ -99,7 +99,8 @@ class TestOanda(TestABC):
     def profit_reward(self):
         return self._profit() * 10
 
-    def _getstate(self):
+    @property
+    def state(self):
 
         if self.portfolio.deals is None:
             position = np.array([0, 0])
@@ -117,8 +118,8 @@ class TestOanda(TestABC):
         return state
 
     def _minibatch(self):
-        random_index = random.randint(0, len(self.lst) - self.batch_size)
-        return self.lst[random_index:random_index + self.batch_size]
+        random_index = random.randint(0, len(self.rate_lst) - self.batch_size)
+        return self.rate_lst[random_index:random_index + self.batch_size]
 
     def _add_index(self):
         self.index += 1
@@ -213,7 +214,7 @@ class TestOanda(TestABC):
             print("step index {} ,trading num {} ,finish total_reward {} last balance".format(
                 self.index, len(self.portfolio.trading), self.total_reward), self.portfolio.balance)
         else:
-            next_state = self._getstate()
+            next_state = self.state
 
         info = None
 
@@ -244,7 +245,7 @@ def test_execute():
 
     df_org = oanda_dataframe('../USD_JPY_M1.csv')
     rate_size = 64
-    test = TestOanda(df_org['close'].values, (60 * 24 * 5), rate_size)
+    test = TestOanda(df_org['close'].values, (60 * 24), rate_size)
 
     eta = 0.0001  # 学習係数
 
@@ -255,6 +256,8 @@ def test_execute():
 
     from dl.base_rl.environment import EnvironmentDDQN
     env = EnvironmentDDQN(test, agent, num_episodes=500, max_steps=0)
+
+    msg.action_msg = True
     env.run()
 
 
