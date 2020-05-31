@@ -1,3 +1,5 @@
+import os
+
 from tengu.oanda_api import oanda_rest_api
 
 
@@ -75,13 +77,25 @@ def main():
 
     df_org = oanda_dataframe('USD_JPY_M1.csv')
     rate_size = 64
+
     test = TestOanda(df_org['close'].values, (60 * 24 * 5), rate_size)
+    test.save_weights = True
 
     eta = 0.0001  # 学習係数
 
+    main_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
+    target_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
+    base_epsilon = 0.5
+
+    if os.path.isfile(test.weight_file_name):
+        main_network.load_weights(test.weight_file_name)
+        target_network.load_weights(test.weight_file_name)
+        base_epsilon = 0.1
+
     brain = BrainDDQN(test,
-                      main_network=OandaNNet(learning_rate=eta, rate_size=rate_size),
-                      target_network=OandaNNet(learning_rate=eta, rate_size=rate_size))
+                      main_network=main_network,
+                      target_network=target_network,
+                      base_epsilon=base_epsilon)
     agent = AgentDDQN(brain)
 
     from tengu.drlfx.base_rl.environment import EnvironmentDDQN

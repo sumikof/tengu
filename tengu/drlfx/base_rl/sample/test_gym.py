@@ -12,6 +12,16 @@ class TestCartPole(TestABC):
         self.num_status = num  # 状態を表す変数の数
         self.shape_status = [1,self.num_status]
         self.complete_episodes = 0
+        self._save_weights = False
+        self.weight_file_name = 'test_cart_pole.hdf5'
+
+    @property
+    def save_weights(self):
+        return self._save_weights
+
+    @save_weights.setter
+    def save_weights(self,bool):
+        self._save_weights = bool
 
     @property
     def mask(self):
@@ -52,6 +62,7 @@ class TestCartPole(TestABC):
 
 if __name__ == '__main__':
     test = TestCartPole()
+    test.save_weights = True
     test.reset()
 
     from tengu.drlfx.base_rl.environment import EnvironmentDDQN
@@ -64,9 +75,16 @@ if __name__ == '__main__':
     from tengu.drlfx.base_rl.brain import BrainDDQN
     from tengu.drlfx.base_rl.sample.simple_nnet import SimpleNNet
 
+    main_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
+    main_network.load_weights(test.weight_file_name)
+    target_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
+    target_network.load_weights(test.weight_file_name)
+
     brain = BrainDDQN(test,
-                      main_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size),
-                      target_network=SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size))
+                      main_network=main_network,
+                      target_network=target_network,
+                      base_epsilon=0.01
+                      )
     agent = AgentDDQN(brain)
     env = EnvironmentDDQN(test, agent, max_steps=0)
 

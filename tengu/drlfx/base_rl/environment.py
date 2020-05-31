@@ -39,6 +39,10 @@ class EnvironmentDDQN:
                 if done:
                     if self.episode % 2 == 0:
                         self.agent.update_target_Q_function()
+
+                    if self.task.save_weights:
+                        self.agent.save_weights(self.task.weight_file_name)
+
                     break
 
                 self.step += 1

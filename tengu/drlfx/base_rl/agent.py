@@ -17,3 +17,6 @@ class AgentDDQN:
     def update_target_Q_function(self):
         """target Q networkをmain Q networkと同じになるように更新"""
         self.brain.update_target_q_network()
+
+    def save_weights(self,file_name):
+        self.brain.save_weights(file_name)

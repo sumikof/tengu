@@ -3,7 +3,7 @@ import numpy as np
 
 
 class BrainDDQN:
-    def __init__(self, task, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99):
+    def __init__(self, task, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99, base_epsilon = 0.5):
 
         self.task = task
 
@@ -12,6 +12,7 @@ class BrainDDQN:
         self.memory = ReplayMemory(self.memory_capacity)
 
         self.gamma = gamma  # 時間割引率
+        self.base_epsilon = base_epsilon
 
         self.main_q_network = main_network
         self.target_q_network = target_network
@@ -20,7 +21,7 @@ class BrainDDQN:
         """
         ε-greedy法で徐々に最適行動のみを採用する
         """
-        epsilon = 0.5 * (1 / (episode + 1))
+        epsilon = self.base_epsilon * (1 / (episode + 1))
 
         if epsilon <= np.random.uniform(0, 1):
             target_action = self.main_q_network.predict([state])[0]
@@ -87,3 +88,6 @@ class BrainDDQN:
     def update_target_q_network(self):
         # target ネットワークを更新する
         self.target_q_network.set_weights(self.main_q_network.get_weights())
+
+    def save_weights(self,file_name):
+        self.main_q_network.save_weights(file_name)

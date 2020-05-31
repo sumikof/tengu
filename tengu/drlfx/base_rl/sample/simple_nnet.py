@@ -2,11 +2,12 @@ from keras import Model, Input
 from keras.layers import Dense
 from keras.optimizers import Adam
 
+from tengu.drlfx.base_rl.base_abc import NNetABC
 from tengu.drlfx.base_rl.loss_function import huberloss
 import numpy as np
 
 
-class SimpleNNet:
+class SimpleNNet(NNetABC):
     def __init__(self, learning_rate=0.01, state_size=4, action_size=2, hidden_size=10):
         self.input_size = state_size
         self.output_size = action_size
@@ -35,3 +36,9 @@ class SimpleNNet:
 
     def get_weights(self):
         return self._model.get_weights()
+
+    def save_weights(self,file_name):
+        self._model.save_weights(file_name)
+
+    def load_weights(self,file_name):
+        self._model.load_weights(file_name)

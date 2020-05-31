@@ -48,7 +48,7 @@ class TestOanda(TestABC):
     position_mask = np.array([True, False, False, True])
     non_position_mask = np.array([True, True, True, False])
 
-    def __init__(self, lst, batch_size, rate_size):
+    def __init__(self, lst, batch_size, rate_size,save_weights =False):
 
         self.num_actions = ACTION_SIZE  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
         self.data_size = rate_size
@@ -63,21 +63,18 @@ class TestOanda(TestABC):
         self.total_reward = 0
 
         self.rate_map = RateMap(self.data_size)
+        self._save_weights = save_weights
+        self.weight_file_name = 'test_oanda.hdf5'
         self.reset()
 
-    def reset(self):
-        self.portfolio.reset()
-        self.portfolio.deposit(10000)
-        self.batch = self._minibatch()
-        self.index = 0
-        self.end_index = self.index + self.data_size - 1
-        self.total_reward = 0
 
-        self.rate_map.reset()
-        self.rate_map.push(self._get_rates())
-        for i in range(self.data_size):
-            self._add_index()
-        return self.state
+    @property
+    def save_weights(self):
+        return self._save_weights
+
+    @save_weights.setter
+    def save_weights(self,bool):
+        self._save_weights = bool
 
     @property
     def mask(self):
@@ -115,6 +112,21 @@ class TestOanda(TestABC):
         state = StepState(copy.copy(self.rate_map),
                           np.append(position, self.current_rate))
         return state
+
+    def reset(self):
+        self.portfolio.reset()
+        self.portfolio.deposit(10000)
+        self.batch = self._minibatch()
+        self.index = 0
+        self.end_index = self.index + self.data_size - 1
+        self.total_reward = 0
+
+        self.rate_map.reset()
+        self.rate_map.push(self._get_rates())
+        for i in range(self.data_size):
+            self._add_index()
+        return self.state
+
 
     def _minibatch(self):
         random_index = random.randint(0, len(self.rate_lst) - self.batch_size)
@@ -243,8 +255,9 @@ def test_execute():
     from tengu.drlfx.oanda_nnet import OandaNNet
 
     df_org = oanda_dataframe('../../USD_JPY_M1.csv')
-    rate_size = 64
-    test = TestOanda(df_org['close'].values, (60 * 24), rate_size)
+    rate_size = 6
+    test = TestOanda(df_org['close'].values, (60), rate_size)
+    test.save_weights = True
 
     eta = 0.0001  # 学習係数
 

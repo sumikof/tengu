@@ -1,13 +1,15 @@
 from keras import Model, Input
-from keras.layers import Dense, Concatenate, Lambda, Conv2D, Activation, MaxPooling2D, Dropout, Flatten, LSTM
+from keras.layers import Dense, Concatenate, Lambda, Conv2D, Activation, MaxPooling2D, Dropout, Flatten
 from keras.optimizers import Adam
 import keras.backend as k
-import numpy as  np
+import numpy as np
+
+from tengu.drlfx.base_rl.base_abc import NNetABC
 from tengu.drlfx.base_rl.loss_function import huberloss
-from tengu.drlfx.test_oanda import StepState, ACTION_SIZE
+from tengu.drlfx.test_oanda import ACTION_SIZE
 
 
-class OandaNNet:
+class OandaNNet(NNetABC):
     def __init__(self, learning_rate=0.01, rate_size=32, position_size=3):
         self.output_size = ACTION_SIZE
         self.input_rate_size = rate_size
@@ -24,7 +26,7 @@ class OandaNNet:
         rate = Flatten()(rate)
 
         position_input = Input(shape=(self.input_position_size,), name='position_input')
-        position = Dense(64)(position_input)
+        position = Dense(16)(position_input)
 
         main_input = Concatenate()([rate, position])
         main_input = Dense(128)(main_input)
@@ -71,3 +73,9 @@ class OandaNNet:
 
     def get_weights(self):
         return self._model.get_weights()
+
+    def save_weights(self, file_name):
+        self._model.save_weights(file_name)
+
+    def load_weights(self, file_name):
+        self._model.load_weights(file_name)
