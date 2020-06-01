@@ -96,6 +96,14 @@ class TestOanda(TestABC):
         return self._profit() * 10
 
     @property
+    def position_rate(self):
+        if self.portfolio.has_deals():
+            position_rate = self.portfolio.position_rate()
+        else:
+            position_rate = 0
+        return position_rate
+
+    @property
     def state(self):
 
         if self.portfolio.deals is None:
@@ -148,9 +156,14 @@ class TestOanda(TestABC):
         return False
 
     def _profit(self):
-        position_rate = self.portfolio.position_rate()
-        current_rate = self.current_rate
-        return (current_rate / position_rate - 1) * 100
+        if self.portfolio.has_deals():
+            position_rate = self.portfolio.position_rate()
+            current_rate = self.current_rate
+            profit = (current_rate / position_rate - 1) * 100 * self.portfolio.deals.position_type
+        else:
+            profit = 0
+
+        return profit
 
     def step(self, action, env):
         reward = 0
@@ -165,7 +178,7 @@ class TestOanda(TestABC):
 
             amount = self.calc_deal_amount()
             printmsg(msg.action_msg,
-                     "step is {} open long deal,rate {}, amount".format(env.step, self.current_rate, amount))
+                     "step is {} open long deal,rate {:.3f}, amount {}".format(env.step, self.current_rate, amount))
             if amount < 1:
                 done = True
             else:
@@ -179,7 +192,7 @@ class TestOanda(TestABC):
 
             amount = self.calc_deal_amount()
             printmsg(msg.action_msg,
-                     "step is {} open short deal,rate {},amount".format(env.step, self.current_rate, amount))
+                     "step is {} open short deal,rate {:.3f},amount {}".format(env.step, self.current_rate, amount))
             if amount < 1:
                 done = True
             else:
@@ -192,10 +205,13 @@ class TestOanda(TestABC):
                 raise NotImplementedError
 
             # ポジションを決済
+            position_rate = self.position_rate
+            current_rate = self.current_rate
             reward = self.profit_reward
+
             printmsg(msg.action_msg,
-                     "step is {} close deal,rate {} ,reward {}".format(env.step, self.current_rate,
-                                                                       reward))
+                     "step is {} position rate {:.3f} ,close rate {:.3f} ,reward {:.3f}".format(
+                         env.step, position_rate,current_rate,reward))
             self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
         if not done:
@@ -258,7 +274,7 @@ def test_execute():
     rate_size = 6
     test = TestOanda(df_org['close'].values, (60), rate_size)
     test.save_weights = True
-
+    msg.step_msg = True
     eta = 0.0001  # 学習係数
 
     brain = BrainDDQN(test,

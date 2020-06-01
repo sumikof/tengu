@@ -47,7 +47,7 @@ class Portfolio:
         self._balance = deposit
         self.trading = []
         self.deals = None
-        self.profit = 0
+        self.total_profit = 0
 
     def deposit(self, dep):
         """
@@ -60,7 +60,7 @@ class Portfolio:
     def reset(self):
         self.trading = []
         self.deals = None
-        self.profit = 0
+        self.total_profit = 0
 
     def deal(self, date, position_type, rate, amount):
         """
@@ -87,7 +87,7 @@ class Portfolio:
         trade = Trade(self.deals.position_type, CLOSE, date, rate, amount)
         self.trading.append(trade)
         profit = self.current_profit(rate)
-        self.profit += profit
+        self.total_profit += profit
         self.balance += self.current_profit(rate)
         self.deals = None
         # print("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
@@ -119,10 +119,12 @@ if __name__ == '__main__':
     portfolio = Portfolio(spread=0.018)
     portfolio.deposit(10000)
 
-    portfolio.deal("2020/04/16", LONG, 110.165, 10000)
+    portfolio.deal("2020/04/16", LONG, 110.1, 10000)
+    print(portfolio.current_profit(110.1 + portfolio.spread))
     portfolio.close_deal("2020/04/16", 110.123, 10000)
 
     portfolio.deal("2020/04/16", SHORT, 110.123, 10000)
+    print(portfolio.current_profit(110.123 - portfolio.spread))
     portfolio.close_deal("2020/04/16", 110.456, 10000)
 
     portfolio.deal("2020/04/16", SHORT, 113.21, 10000)
@@ -133,7 +135,3 @@ if __name__ == '__main__':
 
     portfolio.deal("2020/04/16", LONG, 113.415, 10000)
 
-    print(portfolio.current_profit(113.415))
-    print(portfolio.profit)
-    for i in portfolio.trading:
-        print(i)
