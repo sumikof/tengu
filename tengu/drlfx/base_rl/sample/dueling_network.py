@@ -46,11 +46,12 @@ class DuelingNNet(NNetABC):
     def get_weights(self):
         return self._model.get_weights()
 
-    def save_weights(self,file_name):
+    def save_weights(self, file_name):
         self._model.save_weights(file_name)
 
-    def load_weights(self,file_name):
+    def load_weights(self, file_name):
         self._model.load_weights(file_name)
+
 
 if __name__ == '__main__':
     from tengu.drlfx.base_rl.sample.test_gym import TestCartPole

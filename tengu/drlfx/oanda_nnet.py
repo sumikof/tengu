@@ -8,13 +8,65 @@ from tengu.drlfx.base_rl.base_abc import NNetABC
 from tengu.drlfx.base_rl.loss_function import huberloss
 from tengu.drlfx.test_oanda import ACTION_SIZE
 
+from logging import getLogger, DEBUG
+
+logger = getLogger(__name__)
+
+def edim(a):
+    return k.expand_dims(a[:, 0], -1) + a[:, 1:] - k.mean(a[:, 1:], axis=1, keepdims=True)
 
 class OandaNNet(NNetABC):
-    def __init__(self, learning_rate=0.01, rate_size=32, position_size=3):
+    def __init__(self, learning_rate=0.01, rate_size=32, position_size=3, model=None):
         self.output_size = ACTION_SIZE
         self.input_rate_size = rate_size
         self.input_position_size = position_size
 
+        self._model = model or self.make_model()
+
+        self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
+        self._model.compile(loss=huberloss, optimizer=self.optimizer)
+
+    def input_data_format(self, lst):
+        rates = []
+        positions = []
+        for s in lst:
+            rate = np.reshape(s.rates.map, (self.input_rate_size, self.input_rate_size, 1))
+            rates.append(rate)
+
+            positions.append(s.position)
+        return rates, positions
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self,model):
+        self._model = model
+
+    def predict(self, x):
+        rates, positions = self.input_data_format(x)
+        return self._model.predict([rates, positions])
+
+    def train_on_batch(self, x, y):
+        rates, positions = self.input_data_format(x)
+        y = np.reshape(y, [len(y), self.output_size])
+        return self._model.train_on_batch([rates, positions], y)
+
+    def set_weights(self, w):
+        return self._model.set_weights(w)
+
+    def get_weights(self):
+        return self._model.get_weights()
+
+    def save_weights(self, file_name):
+        self._model.save_weights(file_name)
+
+    def load_weights(self, file_name):
+        self._model.load_weights(file_name)
+
+    def make_model(self):
+        logger.debug("set default model")
         rates_input = Input(shape=(self.input_rate_size, self.input_rate_size, 1), name='rates_input')
         rate = Conv2D(64, kernel_size=(3, 3))(rates_input)
         rate = Activation('relu')(rate)
@@ -40,42 +92,21 @@ class OandaNNet(NNetABC):
         adv = Dense(self.output_size)(adv)
 
         model = Concatenate()([v, adv])
-        model = Lambda(lambda a: k.expand_dims(a[:, 0], -1) + a[:, 1:] - k.mean(a[:, 1:], axis=1, keepdims=True),
-                       output_shape=(self.output_size,))(model)
+        model = Lambda(edim,output_shape=(self.output_size,))(model)
 
-        self._model = Model(inputs=[rates_input, position_input],
-                            outputs=model)
+        return Model(inputs=[rates_input, position_input], outputs=model)
 
-        self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
-        self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
-    def input_data_format(self, lst):
-        rates = []
-        positions = []
-        for s in lst:
-            rate = np.reshape(s.rates.map, (self.input_rate_size, self.input_rate_size, 1))
-            rates.append(rate)
+if __name__ == '__main__':
+    import datetime
+    import json
 
-            positions.append(s.position)
-        return rates, positions
-
-    def predict(self, x):
-        rates, positions = self.input_data_format(x)
-        return self._model.predict([rates, positions])
-
-    def train_on_batch(self, x, y):
-        rates, positions = self.input_data_format(x)
-        y = np.reshape(y, [len(y), self.output_size])
-        return self._model.train_on_batch([rates, positions], y)
-
-    def set_weights(self, w):
-        return self._model.set_weights(w)
-
-    def get_weights(self):
-        return self._model.get_weights()
-
-    def save_weights(self, file_name):
-        self._model.save_weights(file_name)
-
-    def load_weights(self, file_name):
-        self._model.load_weights(file_name)
+    nnet = OandaNNet()
+    yamlstr= nnet.model.to_yaml()
+    now =datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    ofile_name = "oanda_nnet_{}.yaml".format(now)
+#    open(ofile_name,'w').write(yamlstr)
+    from keras.engine.saving import model_from_yaml
+    load_model = model_from_yaml('oanda_nnet_20200609_202154.yaml')
+    load_nnet = OandaNNet(model=load_model)
+    load_nnet.model.summary()

@@ -10,7 +10,7 @@ class TestCartPole(TestABC):
         self.num_actions = self.env.action_space.n  # 取れる行動の数
         num = self.env.observation_space.shape[0]
         self.num_status = num  # 状態を表す変数の数
-        self.shape_status = [1,self.num_status]
+        self.shape_status = [1, self.num_status]
         self.complete_episodes = 0
         self._save_weights = False
         self.weight_file_name = 'test_cart_pole.hdf5'
@@ -20,8 +20,8 @@ class TestCartPole(TestABC):
         return self._save_weights
 
     @save_weights.setter
-    def save_weights(self,bool):
-        self._save_weights = bool
+    def save_weights(self, is_save):
+        self._save_weights = is_save
 
     @property
     def mask(self):
@@ -36,7 +36,7 @@ class TestCartPole(TestABC):
 
         if done:
             print("done is step : " + str(environment.step))
-            next_state = np.zeros( self.num_status)
+            next_state = np.zeros(self.num_status)
 
             # 報酬の設定
             if environment.step < 195:
@@ -56,8 +56,8 @@ class TestCartPole(TestABC):
     def is_finish(self):
         return self.complete_episodes > 10
 
-    def check_status_is_done(self,state):
-        return (state == np.zeros( self.num_status)).all()
+    def check_status_is_done(self, state):
+        return (state == np.zeros(self.num_status)).all()
 
 
 if __name__ == '__main__':

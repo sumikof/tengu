@@ -8,7 +8,9 @@ from tengu.backtest.portfolio import LONG, SHORT
 from collections import namedtuple
 
 from tengu.drlfx.base_rl.test_abc import TestABC
-from tengu.msglogger import printmsg, msg
+from logging import getLogger, DEBUG
+
+logger = getLogger(__name__)
 
 StepState = namedtuple('stepstate', ('rates', 'position'))
 
@@ -48,7 +50,7 @@ class TestOanda(TestABC):
     position_mask = np.array([True, False, False, True])
     non_position_mask = np.array([True, True, True, False])
 
-    def __init__(self, lst, batch_size, rate_size,save_weights =False):
+    def __init__(self, lst, batch_size, rate_size, save_weights=False):
 
         self.num_actions = ACTION_SIZE  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
         self.data_size = rate_size
@@ -67,13 +69,12 @@ class TestOanda(TestABC):
         self.weight_file_name = 'test_oanda.hdf5'
         self.reset()
 
-
     @property
     def save_weights(self):
         return self._save_weights
 
     @save_weights.setter
-    def save_weights(self,bool):
+    def save_weights(self, bool):
         self._save_weights = bool
 
     @property
@@ -135,7 +136,6 @@ class TestOanda(TestABC):
             self._add_index()
         return self.state
 
-
     def _minibatch(self):
         random_index = random.randint(0, len(self.rate_lst) - self.batch_size)
         return self.rate_lst[random_index:random_index + self.batch_size]
@@ -173,12 +173,11 @@ class TestOanda(TestABC):
         elif action == 1:  # deal
             if self.portfolio.has_deals():
                 # すでにpositionある
-                printmsg(msg.error_msg, "position あるのに買建してるよ")
+                logger.error("position あるのに買建してるよ")
                 raise NotImplementedError
 
             amount = self.calc_deal_amount()
-            printmsg(msg.action_msg,
-                     "step is {} open long deal,rate {:.3f}, amount {}".format(env.step, self.current_rate, amount))
+            logger.info("step is {} open long deal,rate {:.3f}, amount {}".format(env.step, self.current_rate, amount))
             if amount < 1:
                 done = True
             else:
@@ -187,12 +186,11 @@ class TestOanda(TestABC):
         elif action == 2:  # deal
             if self.portfolio.has_deals():
                 # すでにpositionある
-                printmsg(msg.error_msg, "position あるのに売建してるよ")
+                logger.error( "position あるのに売建してるよ")
                 raise NotImplementedError
 
             amount = self.calc_deal_amount()
-            printmsg(msg.action_msg,
-                     "step is {} open short deal,rate {:.3f},amount {}".format(env.step, self.current_rate, amount))
+            logger.info("step is {} open short deal,rate {:.3f},amount {}".format(env.step, self.current_rate, amount))
             if amount < 1:
                 done = True
             else:
@@ -201,7 +199,7 @@ class TestOanda(TestABC):
         else:  # close
             if not self.portfolio.has_deals():
                 # ポジションない
-                print(msg.error_msg, "position ないのに決済してるよ")
+                logger.error("position ないのに決済してるよ")
                 raise NotImplementedError
 
             # ポジションを決済
@@ -209,9 +207,8 @@ class TestOanda(TestABC):
             current_rate = self.current_rate
             reward = self.profit_reward
 
-            printmsg(msg.action_msg,
-                     "step is {} position rate {:.3f} ,close rate {:.3f} ,reward {:.3f}".format(
-                         env.step, position_rate,current_rate,reward))
+            logger.info("step is {} position rate {:.3f} ,close rate {:.3f} ,reward {:.3f}".format(
+                         env.step, position_rate, current_rate, reward))
             self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
         if not done:
@@ -234,11 +231,11 @@ class TestOanda(TestABC):
                 reward = self.profit_reward
                 self.total_reward += reward
 
-                printmsg(msg.step_msg, "finish close deal,rate {} ,reward {}".format(self.current_rate, reward))
+                logger.debug("finish close deal,rate {} ,reward {}".format(self.current_rate, reward))
                 self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
             next_state = self.blank_status
-            print("step index {} ,trading num {} ,finish total_reward {} last balance".format(
+            logger.info("step index {} ,trading num {} ,finish total_reward {} last balance".format(
                 self.index, len(self.portfolio.trading), self.total_reward), self.portfolio.balance)
         else:
             next_state = self.state
@@ -274,7 +271,7 @@ def test_execute():
     rate_size = 6
     test = TestOanda(df_org['close'].values, (60), rate_size)
     test.save_weights = True
-    msg.step_msg = True
+    logger.setLevel(DEBUG)
     eta = 0.0001  # 学習係数
 
     brain = BrainDDQN(test,
@@ -285,7 +282,6 @@ def test_execute():
     from tengu.drlfx.base_rl.environment import EnvironmentDDQN
     env = EnvironmentDDQN(test, agent, num_episodes=500, max_steps=0)
 
-    msg.action_msg = True
     env.run()
 
 

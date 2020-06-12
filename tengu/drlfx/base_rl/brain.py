@@ -1,5 +1,7 @@
 from tengu.drlfx.base_rl.replay_memory import ReplayMemory
 import numpy as np
+from logging import getLogger
+logger = getLogger(__name__)
 
 
 class BrainDDQN:
@@ -51,6 +53,7 @@ class BrainDDQN:
 
         # 結合パラメータの更新
         self.update_main_q_network(states, action_values)
+
 
     def get_expected_state_action_values(self, batch):
         """

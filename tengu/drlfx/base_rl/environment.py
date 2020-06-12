@@ -1,3 +1,6 @@
+from logging import getLogger
+logger = getLogger(__name__)
+
 class EnvironmentDDQN:
     def __init__(self, task, agent, num_episodes=300, max_steps=200):
         self.task = task
@@ -19,14 +22,17 @@ class EnvironmentDDQN:
             done = False
             self.step = 0
             while not done:
+                logger.debug("step = {} start".format(self.step))
                 if self.max_steps != 0 and self.step > self.max_steps:
                     break
 
                 # main networkから行動を決定
                 action = self.agent.get_action(state, self.episode, self.task.mask)
+                logger.debug("get action {}".format(action))
 
                 # 行動の実行（次の状態と終了判定を取得）
                 next_state, reward, done, _ = self.task.step(action, self)
+                logger.debug("task.step done={}".format(done))
 
                 # メモリに追加
                 self.agent.memorize(state, action, next_state, reward)

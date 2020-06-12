@@ -3,18 +3,14 @@ import os
 from tengu.oanda_api import oanda_rest_api
 
 
-class oanda_rest_json:
-    def __init__(self):
-        self.a = []
-
-    def printdump(self, rate):
-        import json
-        print(json.dumps(rate, indent=2))
+def printdump(rate):
+    import json
+    print(json.dumps(rate, indent=2))
 
 
 def rest_action(account):
-    action = oanda_rest_json()
-    oanda_rest_api(account, instrument="USD_JPY", action=action.printdump, count=100, granularity="M1")
+    action = printdump
+    oanda_rest_api(account, instrument="USD_JPY", action=action, count=100, granularity="M1")
 
 
 def create_ex_csv(account):
@@ -47,8 +43,8 @@ def outlier_iqr(df):
         iqr = q3 - q1  # 四分位範囲
 
         # 外れ値の基準点
-        outlier_min = q1 - (iqr) * 1.5
-        outlier_max = q3 + (iqr) * 1.5
+        outlier_min = q1 - (iqr * 1.5)
+        outlier_max = q3 + (iqr * 1.5)
 
         # 範囲から外れている値を除く
         col[col < outlier_min] = None
@@ -65,9 +61,6 @@ def henka(df):
     return df
 
 
-import matplotlib.pyplot as plt
-
-
 def main():
     from tengu.oanda_action.oanda_dataframe import oanda_dataframe
     from tengu.drlfx.test_oanda import TestOanda
@@ -75,22 +68,26 @@ def main():
     from tengu.drlfx.base_rl.brain import BrainDDQN
     from tengu.drlfx.oanda_nnet import OandaNNet
 
-    df_org = oanda_dataframe('USD_JPY_M1.csv')
+    df_org = oanda_dataframe('USD_JPY_M1_OLD.csv')
     rate_size = 64
 
     test = TestOanda(df_org['close'].values, (60 * 24 * 5), rate_size)
-    test.save_weights = True
+    test.save_weights = False
 
     eta = 0.0001  # 学習係数
-
+    from logging import basicConfig,DEBUG,INFO,getLogger
+    logger = getLogger(__name__)
+    basicConfig(level=INFO)
     main_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
     target_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
     base_epsilon = 0.5
 
     if os.path.isfile(test.weight_file_name):
+        logger.debug("load weight_file: {}".format(test.weight_file_name))
         main_network.load_weights(test.weight_file_name)
         target_network.load_weights(test.weight_file_name)
-        base_epsilon = 0.1
+        main_network.model.summary(print_fn=logger.debug)
+        base_epsilon = 0.001
 
     brain = BrainDDQN(test,
                       main_network=main_network,
@@ -104,6 +101,7 @@ def main():
 
 
 def fig(df):
+    import matplotlib.pyplot as plt
     df.plot(figsize=(15, 5))
     plt.show()
 

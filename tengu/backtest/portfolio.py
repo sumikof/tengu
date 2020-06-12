@@ -1,3 +1,6 @@
+from logging import getLogger
+logger = getLogger(__name__)
+
 LONG = 1
 SHORT = -1
 OPEN = 0
@@ -11,6 +14,7 @@ class Trade:
         self.date = date
         self.rate = rate
         self.amount = amount
+        self._position = None
 
     @property
     def position(self):
@@ -18,7 +22,7 @@ class Trade:
 
     @position.setter
     def position(self, value):
-        self.__position = value
+        self._position = value
 
     def __str__(self):
         return "date %s, position: %s,trade: %s,rate %f, amount %d" % (
@@ -41,7 +45,6 @@ class Position:
 
 class Portfolio:
 
-
     def __init__(self, spread=0.0, deposit=0):
         self.spread = spread
         self._balance = deposit
@@ -52,7 +55,7 @@ class Portfolio:
     def deposit(self, dep):
         """
         入金
-        :param equity:
+        :param dep:
         :return:
         """
         self._balance = dep
@@ -75,22 +78,24 @@ class Portfolio:
         trade = Trade(position_type, OPEN, date, deal_rate, amount)
         self.trading.append(trade)
         self.deals = Position(trade)
-        # print("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate,self.spread,deal_rate))
+        logger.debug("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate,self.spread,deal_rate))
 
     def close_deal(self, date, rate, amount):
         """
         決済
         :param date:
         :param rate:
+        :param amount:
         :return:
         """
+        position_rate = self.position_rate()
         trade = Trade(self.deals.position_type, CLOSE, date, rate, amount)
         self.trading.append(trade)
         profit = self.current_profit(rate)
         self.total_profit += profit
         self.balance += self.current_profit(rate)
         self.deals = None
-        # print("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
+        logger.debug("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
 
     def position_rate(self):
         return self.deals.rate
@@ -134,4 +139,3 @@ if __name__ == '__main__':
     portfolio.close_deal("2020/04/16", 110.1, 10000)
 
     portfolio.deal("2020/04/16", LONG, 113.415, 10000)
-
