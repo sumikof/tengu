@@ -2,12 +2,13 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 class EnvironmentDDQN:
-    def __init__(self, task, agent, num_episodes=300, max_steps=200):
+    def __init__(self, task, agent, num_episodes=300, max_steps=200, train_interval= 2):
         self.task = task
         self.agent = agent
         self.num_episodes = num_episodes
         self.max_steps = max_steps
         self.step = 0
+        self.train_interval = train_interval
 
     def run(self):
 
@@ -38,7 +39,8 @@ class EnvironmentDDQN:
                 self.agent.memorize(state, action, next_state, reward)
 
                 # main q networkの更新
-                self.agent.update_Q_function()
+                if self.step % self.train_interval == 0:
+                    self.agent.update_Q_function()
 
                 state = next_state
 

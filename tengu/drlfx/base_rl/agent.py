@@ -16,7 +16,7 @@ class AgentDDQN:
         return action
 
     def memorize(self, state, action, next_state, reward):
-        self.brain.memory.push(state, action, next_state, reward)
+        self.brain.memorize(state, action, next_state, reward)
 
     def update_target_Q_function(self):
         """target Q networkをmain Q networkと同じになるように更新"""
