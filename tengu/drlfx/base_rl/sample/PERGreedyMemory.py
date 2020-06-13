@@ -22,6 +22,9 @@ class PERGreedyMemory:
         experience = _head_wrapper(experience)
         heapq.heappush(self.buffer, (-self.max_priority, experience))
 
+    def __len__(self):
+        return len(self.buffer)
+
     def update(self, experience, td_error):
         # heapqは最小値を出すためマイナス
         experience = _head_wrapper(experience)
@@ -31,5 +34,5 @@ class PERGreedyMemory:
             self.max_priority = td_error
 
     def sample(self, batch_size):
-        batchs = [heapq.heappop(self.buffer)[1].d for _ in range(batch_size)]
+        batchs = [heapq.heappop(self.buffer)[1].data for _ in range(batch_size)]
         return batchs

@@ -1,17 +1,29 @@
 from tengu.drlfx.base_rl.replay_memory import ReplayMemory
 import numpy as np
 from logging import getLogger
+from tengu.drlfx.base_rl.sample.PERGreedyMemory import PERGreedyMemory
+
+from collections import namedtuple
+
+Transition = namedtuple('transition', ('state', 'action', 'next_state', 'reward'))
+
 logger = getLogger(__name__)
 
 
 class BrainDDQN:
-    def __init__(self, task, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99, base_epsilon = 0.5):
+    def __init__(self, task, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99,
+                 base_epsilon=0.5,
+                 isGreedyTDerrorprioritization=True):
 
         self.task = task
 
         self.batch_size = batch_size
         self.memory_capacity = memory_capacity
         self.memory = ReplayMemory(self.memory_capacity)
+        self.isGreedyTDerrorprioritization = isGreedyTDerrorprioritization
+        if self.isGreedyTDerrorprioritization:
+            logger.debug("set PERGreedyMemory")
+            self.memory = PERGreedyMemory(self.memory_capacity)
 
         self.gamma = gamma  # 時間割引率
         self.base_epsilon = base_epsilon
@@ -54,6 +66,8 @@ class BrainDDQN:
         # 結合パラメータの更新
         self.update_main_q_network(states, action_values)
 
+    def memorize(self, state, action, next_state, reward):
+        self.memory.add(Transition(state, action, next_state, reward))
 
     def get_expected_state_action_values(self, batch):
         """
@@ -64,22 +78,29 @@ class BrainDDQN:
 
         states = []
         action_values = []
-        for i, (state_b, action_b, next_state_b, reward_b) in enumerate(batch):
+        for i, transition in enumerate(batch):
 
-            if not self.task.check_status_is_done(next_state_b):
+            if not self.task.check_status_is_done(transition.next_state):
                 # 価値の計算
-                main_q = self.main_q_network.predict([next_state_b])[0]
+                main_q = self.main_q_network.predict([transition.next_state])[0]
                 next_action = np.argmax(main_q)
 
-                next_action_q = self.target_q_network.predict([next_state_b])
-                reward = reward_b + self.gamma * next_action_q[0][next_action]
+                next_action_q = self.target_q_network.predict([transition.next_state])
+                reward = transition.reward + self.gamma * next_action_q[0][next_action]
 
             else:
-                reward = reward_b
+                reward = transition.reward
 
-            states.append(state_b)
-            action_values.append(self.main_q_network.predict([state_b])[0])
-            action_values[i][action_b] = reward
+            states.append(transition.state)
+            action_values.append(self.main_q_network.predict([transition.state])[0])
+
+            if self.isGreedyTDerrorprioritization:
+                reward_diff = action_values[i][transition.action] - reward
+
+            action_values[i][transition.action] = reward
+
+            if self.isGreedyTDerrorprioritization:
+                self.memory.update(transition, reward_diff)
         return states, action_values
 
     def update_main_q_network(self, states, action_values):
@@ -92,5 +113,5 @@ class BrainDDQN:
         # target ネットワークを更新する
         self.target_q_network.set_weights(self.main_q_network.get_weights())
 
-    def save_weights(self,file_name):
+    def save_weights(self, file_name):
         self.main_q_network.save_weights(file_name)

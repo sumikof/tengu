@@ -69,7 +69,7 @@ if __name__ == '__main__':
     basicConfig(level=INFO)
 
     test = TestCartPole()
-    test.save_weights = True
+    test.save_weights = False
     test.reset()
 
     from tengu.drlfx.base_rl.environment import EnvironmentDDQN
@@ -83,9 +83,7 @@ if __name__ == '__main__':
     from tengu.drlfx.base_rl.sample.simple_nnet import SimpleNNet
 
     main_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
-    main_network.load_weights(test.weight_file_name)
     target_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
-    target_network.load_weights(test.weight_file_name)
 
     if os.path.isfile(test.weight_file_name):
         logger.debug("load weight_file: {}".format(test.weight_file_name))

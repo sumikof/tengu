@@ -73,16 +73,17 @@ def main():
 
     test = TestOanda(df_org['close'].values, (60 * 24 * 5), rate_size)
     test.save_weights = False
+    load_weight = False
 
     eta = 0.0001  # 学習係数
     from logging import basicConfig,DEBUG,INFO,getLogger
     logger = getLogger(__name__)
-    basicConfig(level=INFO)
+    basicConfig(level=DEBUG)
     main_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
     target_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
     base_epsilon = 0.5
 
-    if os.path.isfile(test.weight_file_name):
+    if load_weight and os.path.isfile(test.weight_file_name):
         logger.debug("load weight_file: {}".format(test.weight_file_name))
         main_network.load_weights(test.weight_file_name)
         target_network.load_weights(test.weight_file_name)
