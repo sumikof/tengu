@@ -8,15 +8,18 @@ from tengu.drlfx.base_rl.base_abc import NNetABC
 from tengu.drlfx.base_rl.loss_function import huberloss
 from tengu.drlfx.test_oanda import ACTION_SIZE
 
-from logging import getLogger, DEBUG
+from logging import getLogger
 
 logger = getLogger(__name__)
+
 
 def edim(a):
     return k.expand_dims(a[:, 0], -1) + a[:, 1:] - k.mean(a[:, 1:], axis=1, keepdims=True)
 
+
 class OandaNNet(NNetABC):
     def __init__(self, learning_rate=0.01, rate_size=32, position_size=3, model=None):
+        super().__init__()
         self.output_size = ACTION_SIZE
         self.input_rate_size = rate_size
         self.input_position_size = position_size
@@ -35,14 +38,6 @@ class OandaNNet(NNetABC):
 
             positions.append(s.position)
         return rates, positions
-
-    @property
-    def model(self):
-        return self._model
-
-    @model.setter
-    def model(self,model):
-        self._model = model
 
     def predict(self, x):
         rates, positions = self.input_data_format(x)
@@ -92,21 +87,21 @@ class OandaNNet(NNetABC):
         adv = Dense(self.output_size)(adv)
 
         model = Concatenate()([v, adv])
-        model = Lambda(edim,output_shape=(self.output_size,))(model)
+        model = Lambda(edim, output_shape=(self.output_size,))(model)
 
         return Model(inputs=[rates_input, position_input], outputs=model)
 
 
 if __name__ == '__main__':
     import datetime
-    import json
 
     nnet = OandaNNet()
-    yamlstr= nnet.model.to_yaml()
-    now =datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    yamlstr = nnet.model.to_yaml()
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     ofile_name = "oanda_nnet_{}.yaml".format(now)
-#    open(ofile_name,'w').write(yamlstr)
+    #    open(ofile_name,'w').write(yamlstr)
     from keras.engine.saving import model_from_yaml
+
     load_model = model_from_yaml('oanda_nnet_20200609_202154.yaml')
     load_nnet = OandaNNet(model=load_model)
     load_nnet.model.summary()

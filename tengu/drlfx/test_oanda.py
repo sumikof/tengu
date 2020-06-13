@@ -231,12 +231,12 @@ class TestOanda(TestABC):
                 reward = self.profit_reward
                 self.total_reward += reward
 
-                logger.debug("finish close deal,rate {} ,reward {}".format(self.current_rate, reward))
+                logger.info("finish close deal,rate {} ,reward {}".format(self.current_rate, reward))
                 self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
             next_state = self.blank_status
-            logger.info("step index {} ,trading num {} ,finish total_reward {} last balance".format(
-                self.index, len(self.portfolio.trading), self.total_reward), self.portfolio.balance)
+            logger.info("step index {} ,trading num {} ,finish total_reward {} last balance{}".format(
+                self.index, len(self.portfolio.trading), self.total_reward, self.portfolio.balance))
         else:
             next_state = self.state
 

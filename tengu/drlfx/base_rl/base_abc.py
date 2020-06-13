@@ -2,6 +2,18 @@ from abc import ABCMeta, abstractmethod
 
 
 class NNetABC(metaclass=ABCMeta):
+
+    def __init__(self):
+        self._model = None
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, new_model):
+        self._model = new_model
+
     @abstractmethod
     def predict(self, x):
         raise NotImplementedError
@@ -19,9 +31,9 @@ class NNetABC(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def save_weights(self,file_name):
+    def save_weights(self, file_name):
         raise NotImplementedError
 
     @abstractmethod
-    def load_weights(self,file_name):
+    def load_weights(self, file_name):
         raise NotImplementedError

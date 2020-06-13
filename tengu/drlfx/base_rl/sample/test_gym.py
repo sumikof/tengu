@@ -1,3 +1,7 @@
+import os
+from logging import getLogger
+logger = getLogger(__name__)
+
 import gym
 import numpy as np
 
@@ -61,6 +65,9 @@ class TestCartPole(TestABC):
 
 
 if __name__ == '__main__':
+    from logging import basicConfig, INFO
+    basicConfig(level=INFO)
+
     test = TestCartPole()
     test.save_weights = True
     test.reset()
@@ -79,6 +86,14 @@ if __name__ == '__main__':
     main_network.load_weights(test.weight_file_name)
     target_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
     target_network.load_weights(test.weight_file_name)
+
+    if os.path.isfile(test.weight_file_name):
+        logger.debug("load weight_file: {}".format(test.weight_file_name))
+        main_network.load_weights(test.weight_file_name)
+        target_network.load_weights(test.weight_file_name)
+        main_network.model.summary(print_fn=logger.debug)
+        base_epsilon = 0.001
+
 
     brain = BrainDDQN(test,
                       main_network=main_network,

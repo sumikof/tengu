@@ -10,6 +10,7 @@ from tengu.drlfx.base_rl.loss_function import huberloss
 
 class DuelingNNet(NNetABC):
     def __init__(self, learning_rate=0.01, state_size=4, action_size=2, hidden_size=10):
+        super().__init__()
         self.input_size = state_size
         self.output_size = action_size
 

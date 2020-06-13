@@ -8,9 +8,7 @@ class AgentDDQN:
 
     def update_Q_function(self):
         """memoryからmain Q networkの更新"""
-        logger.debug("exec main_network update_Q_function ")
         self.brain.replay()
-        logger.debug("finish main_network update_Q_function ")
 
     def get_action(self, state, episode, mask):
         """行動の決定"""

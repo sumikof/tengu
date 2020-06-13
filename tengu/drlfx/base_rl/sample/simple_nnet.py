@@ -9,6 +9,7 @@ import numpy as np
 
 class SimpleNNet(NNetABC):
     def __init__(self, learning_rate=0.01, state_size=4, action_size=2, hidden_size=10):
+        super().__init__()
         self.input_size = state_size
         self.output_size = action_size
 
@@ -21,6 +22,7 @@ class SimpleNNet(NNetABC):
 
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
+
 
     def predict(self, x):
         x = np.reshape(x, [len(x), self.input_size])
