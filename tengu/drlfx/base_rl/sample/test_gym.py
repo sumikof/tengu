@@ -1,11 +1,11 @@
 import os
-from logging import getLogger
-logger = getLogger(__name__)
-
 import gym
 import numpy as np
 
 from tengu.drlfx.base_rl.test_abc import TestABC
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class TestCartPole(TestABC):
@@ -66,6 +66,7 @@ class TestCartPole(TestABC):
 
 if __name__ == '__main__':
     from logging import basicConfig, INFO
+
     basicConfig(level=INFO)
 
     test = TestCartPole()
@@ -85,19 +86,29 @@ if __name__ == '__main__':
     main_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
     target_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
 
-    if os.path.isfile(test.weight_file_name):
+    base_epsilon = 0.5
+
+    load_weight = False
+    if load_weight and os.path.isfile(test.weight_file_name):
         logger.debug("load weight_file: {}".format(test.weight_file_name))
         main_network.load_weights(test.weight_file_name)
         target_network.load_weights(test.weight_file_name)
         main_network.model.summary(print_fn=logger.debug)
         base_epsilon = 0.001
 
+    memory_capacity = 10000
+    per_alpha = 0.6
+    from tengu.drlfx.base_rl import experience_memory
 
-    brain = BrainDDQN(test,
+    memory = experience_memory.factory(memory_type=experience_memory.type.PERRankBaseMemory,
+                                       memory_capacity=memory_capacity, per_alpha=per_alpha)
+
+    brain = BrainDDQN(task=test, memory=memory,
                       main_network=main_network,
                       target_network=target_network,
-                      base_epsilon=0.01
+                      base_epsilon=base_epsilon
                       )
+
     agent = AgentDDQN(brain)
     env = EnvironmentDDQN(test, agent, max_steps=0)
 

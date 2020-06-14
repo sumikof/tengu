@@ -1,8 +1,6 @@
-from tengu.drlfx.base_rl.replay_memory import ReplayMemory
+from tengu.drlfx.base_rl.experience_memory.ReplayMemory import ReplayMemory
 import numpy as np
 from logging import getLogger
-from tengu.drlfx.base_rl.sample.PERGreedyMemory import PERGreedyMemory
-
 from collections import namedtuple
 
 Transition = namedtuple('transition', ('state', 'action', 'next_state', 'reward'))
@@ -11,25 +9,21 @@ logger = getLogger(__name__)
 
 
 class BrainDDQN:
-    def __init__(self, task, main_network, target_network, batch_size=32, memory_capacity=10000, gamma=0.99,
-                 base_epsilon=0.5,
-                 isGreedyTDerrorprioritization=True):
+    def __init__(self, task, memory, main_network, target_network, batch_size=32, gamma=0.99,
+                 base_epsilon=0.5
+                 ):
 
         self.task = task
 
         self.batch_size = batch_size
-        self.memory_capacity = memory_capacity
-        self.memory = ReplayMemory(self.memory_capacity)
-        self.isGreedyTDerrorprioritization = isGreedyTDerrorprioritization
-        if self.isGreedyTDerrorprioritization:
-            logger.debug("set PERGreedyMemory")
-            self.memory = PERGreedyMemory(self.memory_capacity)
+        self.memory = memory or ReplayMemory(10000)
 
         self.gamma = gamma  # 時間割引率
         self.base_epsilon = base_epsilon
 
         self.main_q_network = main_network
         self.target_q_network = target_network
+        logger.info("brain memory type = {}".format(self.memory))
 
     def decide_action(self, state, episode, mask):
         """
@@ -57,11 +51,11 @@ class BrainDDQN:
 
         # ミニバッチの作成
         # ミニバッチの作成 メモリからミニバッチ分のデータを取り出す
-        transitions = self.memory.sample(self.batch_size)
+        indexs, transitions = self.memory.sample(self.batch_size)
         #        batch = Transition(*zip(*transitions))
 
         # 教師信号Q(s_t,a_t)を求める
-        (states, action_values) = self.get_expected_state_action_values(transitions)
+        (states, action_values) = self.get_expected_state_action_values(indexs, transitions)
 
         # 結合パラメータの更新
         self.update_main_q_network(states, action_values)
@@ -69,7 +63,7 @@ class BrainDDQN:
     def memorize(self, state, action, next_state, reward):
         self.memory.add(Transition(state, action, next_state, reward))
 
-    def get_expected_state_action_values(self, batch):
+    def get_expected_state_action_values(self, indexs, batch):
         """
         sample batchからmain ネットワークの更新に使用するデータを作成する
         :param batch: memory
@@ -79,8 +73,8 @@ class BrainDDQN:
         states = []
         action_values = []
         for i, transition in enumerate(batch):
-
             if not self.task.check_status_is_done(transition.next_state):
+
                 # 価値の計算
                 main_q = self.main_q_network.predict([transition.next_state])[0]
                 next_action = np.argmax(main_q)
@@ -94,13 +88,15 @@ class BrainDDQN:
             states.append(transition.state)
             action_values.append(self.main_q_network.predict([transition.state])[0])
 
-            if self.isGreedyTDerrorprioritization:
-                reward_diff = action_values[i][transition.action] - reward
+            reward_diff = action_values[i][transition.action] - reward
+
+            if indexs is None:
+                self.memory.update(None, transition, reward_diff)
+            else:
+                self.memory.update(indexs[i], transition, reward_diff)
 
             action_values[i][transition.action] = reward
 
-            if self.isGreedyTDerrorprioritization:
-                self.memory.update(transition, reward_diff)
         return states, action_values
 
     def update_main_q_network(self, states, action_values):

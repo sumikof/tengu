@@ -1,5 +1,7 @@
 import heapq
 
+from tengu.drlfx.base_rl.experience_memory.memory_abc import MemoryABC
+
 
 class _head_wrapper():
     def __init__(self, data):
@@ -9,7 +11,7 @@ class _head_wrapper():
         return True
 
 
-class PERGreedyMemory:
+class PERGreedyMemory(MemoryABC):
     def __init__(self, capacity):
         self.buffer = []
         self.capacity = capacity
@@ -22,10 +24,7 @@ class PERGreedyMemory:
         experience = _head_wrapper(experience)
         heapq.heappush(self.buffer, (-self.max_priority, experience))
 
-    def __len__(self):
-        return len(self.buffer)
-
-    def update(self, experience, td_error):
+    def update(self, index, experience, td_error):
         # heapqは最小値を出すためマイナス
         experience = _head_wrapper(experience)
         heapq.heappush(self.buffer, (-td_error, experience))
@@ -35,4 +34,8 @@ class PERGreedyMemory:
 
     def sample(self, batch_size):
         batchs = [heapq.heappop(self.buffer)[1].data for _ in range(batch_size)]
-        return batchs
+        return None , batchs
+
+    def __len__(self):
+        return len(self.buffer)
+

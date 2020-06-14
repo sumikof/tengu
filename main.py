@@ -76,7 +76,7 @@ def main():
     load_weight = False
 
     eta = 0.0001  # 学習係数
-    from logging import basicConfig,DEBUG,INFO,getLogger
+    from logging import basicConfig, DEBUG, getLogger
     logger = getLogger(__name__)
     basicConfig(level=DEBUG)
     main_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
@@ -90,10 +90,19 @@ def main():
         main_network.model.summary(print_fn=logger.debug)
         base_epsilon = 0.001
 
-    brain = BrainDDQN(test,
+    memory_capacity = 10000
+    per_alpha = 0.6
+    from tengu.drlfx.base_rl import experience_memory
+
+    memory = experience_memory.factory(memory_type=experience_memory.type.PERRankBaseMemory,
+                                       memory_capacity=memory_capacity, per_alpha=per_alpha)
+
+    brain = BrainDDQN(task=test, memory=memory,
                       main_network=main_network,
                       target_network=target_network,
-                      base_epsilon=base_epsilon)
+                      base_epsilon=base_epsilon
+                      )
+
     agent = AgentDDQN(brain)
 
     from tengu.drlfx.base_rl.environment import EnvironmentDDQN

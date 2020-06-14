@@ -1,6 +1,9 @@
 import random
 
-class ReplayMemory:
+from tengu.drlfx.base_rl.experience_memory.memory_abc import MemoryABC
+
+
+class ReplayMemory(MemoryABC):
     def __init__(self, CAPACITY):
         self.capacity = CAPACITY  # メモリの最大
         self.memory = []
@@ -16,7 +19,10 @@ class ReplayMemory:
         self.index = (self.index + 1) % self.capacity
 
     def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+        return None, random.sample(self.memory, batch_size)
 
     def __len__(self):
         return len(self.memory)
+
+    def update(self, index, experience, td_error):
+        pass
