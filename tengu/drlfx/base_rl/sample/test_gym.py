@@ -79,12 +79,11 @@ if __name__ == '__main__':
     learning_rate = ETA
     hidden_size = 32
 
-    from tengu.drlfx.base_rl.agent import AgentDDQN
-    from tengu.drlfx.base_rl.brain import BrainDDQN
-    from tengu.drlfx.base_rl.sample.simple_nnet import SimpleNNet
+    from tengu.drlfx.base_rl.sample.nnet_util import NNetType,nnet_factory
 
-    main_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
-    target_network = SimpleNNet(learning_rate, test.num_status, test.num_actions, hidden_size)
+    nnet_type = NNetType.DuelingNNet
+    main_network = nnet_factory(nnet_type,learning_rate, test.num_status, test.num_actions, hidden_size)
+    target_network = nnet_factory(nnet_type,learning_rate, test.num_status, test.num_actions, hidden_size)
 
     base_epsilon = 0.5
 
@@ -102,6 +101,10 @@ if __name__ == '__main__':
 
     memory = experience_memory.factory(memory_type=experience_memory.type.PERRankBaseMemory,
                                        memory_capacity=memory_capacity, per_alpha=per_alpha)
+
+
+    from tengu.drlfx.base_rl.agent import AgentDDQN
+    from tengu.drlfx.base_rl.brain import BrainDDQN
 
     brain = BrainDDQN(task=test, memory=memory,
                       main_network=main_network,
