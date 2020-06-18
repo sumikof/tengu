@@ -66,6 +66,7 @@ class BrainDDQN:
     def get_expected_state_action_values(self, indexs, batch):
         """
         sample batchからmain ネットワークの更新に使用するデータを作成する
+        :param indexs:
         :param batch: memory
         :return: 状態,状態に対して更新するaction_value
         """

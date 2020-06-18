@@ -30,13 +30,8 @@ class OandaNNet(NNetABC):
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
     def input_data_format(self, lst):
-        rates = []
-        positions = []
-        for s in lst:
-            rate = np.reshape(s.rates.map, (self.input_rate_size, self.input_rate_size, 1))
-            rates.append(rate)
-
-            positions.append(s.position)
+        r,positions = map(list,zip(*lst))
+        rates = [np.reshape(s.map, (self.input_rate_size, self.input_rate_size, 1)) for s in r]
         return rates, positions
 
     def predict(self, x):
