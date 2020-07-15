@@ -17,6 +17,10 @@ class PERGreedyMemory(MemoryABC):
         self.capacity = capacity
         self.max_priority = 1
 
+    @classmethod
+    def build(cls, builder):
+        return PERGreedyMemory(builder.args.get("memory_capacity",10000))
+
     def add(self, experience):
         if self.capacity <= len(self.buffer):
             self.buffer.pop()
@@ -34,8 +38,7 @@ class PERGreedyMemory(MemoryABC):
 
     def sample(self, batch_size):
         batchs = [heapq.heappop(self.buffer)[1].data for _ in range(batch_size)]
-        return None , batchs
+        return None, batchs
 
     def __len__(self):
         return len(self.buffer)
-

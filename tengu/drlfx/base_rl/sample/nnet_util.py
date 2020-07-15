@@ -8,11 +8,11 @@ class NNetType(Enum):
     SimpleNNet = auto()
 
 
-def nnet_factory(nnet_type,learning_rate, num_status, num_actions, hidden_size):
-    if nnet_type == NNetType.SimpleNNet:
-        nnet = SimpleNNet(learning_rate, num_status, num_actions, hidden_size)
-    elif nnet_type == NNetType.DuelingNNet:
-        nnet = DuelingNNet(learning_rate, num_status, num_actions, hidden_size)
+def nnet_factory(builder):
+    if builder.args["nnet_type"] == NNetType.SimpleNNet.name:
+        nnet = SimpleNNet.build(builder)
+    elif builder.args["nnet_type"] == NNetType.DuelingNNet.name:
+        nnet = DuelingNNet.build(builder)
     else:
         raise RuntimeError
 

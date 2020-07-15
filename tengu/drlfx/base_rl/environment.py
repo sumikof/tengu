@@ -1,14 +1,25 @@
 from logging import getLogger
+
 logger = getLogger(__name__)
 
+
 class EnvironmentDDQN:
-    def __init__(self, task, agent, num_episodes=300, max_steps=200, train_interval= 2):
+    def __init__(self, agent, task, num_episodes, max_steps, train_interval):
         self.task = task
         self.agent = agent
         self.num_episodes = num_episodes
         self.max_steps = max_steps
         self.step = 0
         self.train_interval = train_interval
+
+    @classmethod
+    def build(cls, builder):
+        return EnvironmentDDQN(
+            builder.build_agent(),
+            builder.test,
+            builder.args.get('num_episodes', 300),
+            builder.args.get('max_steps', 200),
+            builder.args.get('train_interval', 2))
 
     def run(self):
 

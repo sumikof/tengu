@@ -32,6 +32,15 @@ class DuelingNNet(NNetABC):
         self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         self._model.compile(loss=huberloss, optimizer=self.optimizer)
 
+    @classmethod
+    def build(cls, builder):
+        return DuelingNNet(
+            learning_rate=builder.args.get('learning_rate', 0.01),
+            state_size=builder.test.num_status,
+            action_size=builder.test.num_actions,
+            hidden_size=builder.args.get('hidden_size', 10))
+
+
     def predict(self, x):
         x = np.reshape(x, [len(x), self.input_size])
         return self._model.predict(x)
@@ -58,25 +67,9 @@ if __name__ == '__main__':
     from tengu.drlfx.base_rl.sample.test_gym import TestCartPole
 
     test = TestCartPole()
-    from tengu.drlfx.base_rl.environment import EnvironmentDDQN
+    test.save_weights = False
+    test.reset()
 
-    ETA = 0.0001  # 学習係数
-    hidden = 32
-
-    from tengu.drlfx.base_rl.agent import AgentDDQN
-    from tengu.drlfx.base_rl.brain import BrainDDQN
-
-    Net = DuelingNNet
-    brain = BrainDDQN(test,
-                      main_network=Net(learning_rate=ETA,
-                                       state_size=test.num_status,
-                                       action_size=test.num_actions,
-                                       hidden_size=hidden),
-                      target_network=Net(learning_rate=ETA,
-                                         state_size=test.num_status,
-                                         action_size=test.num_actions,
-                                         hidden_size=hidden)
-                      )
-    agent = AgentDDQN(brain)
-    env = EnvironmentDDQN(test, agent)
+    from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder
+    env = NNetBuilder(test, "DDQN", nnet=DuelingNNet).build_environment()
     env.run()

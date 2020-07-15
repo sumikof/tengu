@@ -71,6 +71,14 @@ class PERProportionalMemory(MemoryABC):
         self.alpha = alpha
         self.max_priority = 1
 
+    @classmethod
+    def build(cls, builder):
+        return PERProportionalMemory(
+            builder.args.get("memory_capacity",10000),
+            builder.args.get("per_alpha",0.6))
+
+
+
     def add(self, experience):
         """SumTreeに追加"""
         self.tree.add(self.max_priority, experience)

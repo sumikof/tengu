@@ -9,9 +9,7 @@ logger = getLogger(__name__)
 
 
 class BrainDDQN:
-    def __init__(self, task, memory, main_network, target_network, batch_size=32, gamma=0.99,
-                 base_epsilon=0.5
-                 ):
+    def __init__(self, task, memory, main_network, target_network, batch_size, gamma, base_epsilon):
 
         self.task = task
 
@@ -24,6 +22,21 @@ class BrainDDQN:
         self.main_q_network = main_network
         self.target_q_network = target_network
         logger.info("brain memory type = {}".format(self.memory))
+
+    @classmethod
+    def build(cls, builder):
+
+        main_network = builder.build_network()
+        target_network = builder.build_network()
+        memory = builder.build_memory()
+
+        return BrainDDQN(builder.test,
+                         memory,
+                         main_network,
+                         target_network,
+                         builder.args.get('batch_size', 32),
+                         builder.args.get('gamma', 0.99),
+                         builder.args.get('base_epsilon', 0.99))
 
     def decide_action(self, state, episode, mask):
         """

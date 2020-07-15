@@ -4,10 +4,14 @@ from tengu.drlfx.base_rl.experience_memory.memory_abc import MemoryABC
 
 
 class ReplayMemory(MemoryABC):
-    def __init__(self, CAPACITY):
-        self.capacity = CAPACITY  # メモリの最大
+    def __init__(self, memory_capacity):
+        self.capacity = memory_capacity  # メモリの最大
         self.memory = []
         self.index = 0
+
+    @classmethod
+    def build(cls, builder):
+        return ReplayMemory(builder.args.get("memory_capacity", 10000))
 
     def add(self, obj):
         if len(self.memory) < self.capacity:

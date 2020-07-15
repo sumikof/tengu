@@ -28,6 +28,10 @@ class TestCartPole(TestABC):
         self._save_weights = is_save
 
     @property
+    def blank_status(self):
+        return np.zeros(self.num_status)
+
+    @property
     def mask(self):
         return [True, True]
 
@@ -40,7 +44,7 @@ class TestCartPole(TestABC):
 
         if done:
             print("done is step : " + str(environment.step))
-            next_state = np.zeros(self.num_status)
+            next_state = self.blank_status
 
             # 報酬の設定
             if environment.step < 195:
@@ -61,7 +65,7 @@ class TestCartPole(TestABC):
         return self.complete_episodes > 10
 
     def check_status_is_done(self, state):
-        return (state == np.zeros(self.num_status)).all()
+        return (state == self.blank_status).all()
 
 
 if __name__ == '__main__':
@@ -73,46 +77,6 @@ if __name__ == '__main__':
     test.save_weights = False
     test.reset()
 
-    from tengu.drlfx.base_rl.environment import EnvironmentDDQN
-
-    ETA = 0.0001  # 学習係数
-    learning_rate = ETA
-    hidden_size = 32
-
-    from tengu.drlfx.base_rl.sample.nnet_util import NNetType,nnet_factory
-
-    nnet_type = NNetType.DuelingNNet
-    main_network = nnet_factory(nnet_type,learning_rate, test.num_status, test.num_actions, hidden_size)
-    target_network = nnet_factory(nnet_type,learning_rate, test.num_status, test.num_actions, hidden_size)
-
-    base_epsilon = 0.5
-
-    load_weight = False
-    if load_weight and os.path.isfile(test.weight_file_name):
-        logger.debug("load weight_file: {}".format(test.weight_file_name))
-        main_network.load_weights(test.weight_file_name)
-        target_network.load_weights(test.weight_file_name)
-        main_network.model.summary(print_fn=logger.debug)
-        base_epsilon = 0.001
-
-    memory_capacity = 10000
-    per_alpha = 0.6
-    from tengu.drlfx.base_rl import experience_memory
-
-    memory = experience_memory.factory(memory_type=experience_memory.type.PERRankBaseMemory,
-                                       memory_capacity=memory_capacity, per_alpha=per_alpha)
-
-
-    from tengu.drlfx.base_rl.agent import AgentDDQN
-    from tengu.drlfx.base_rl.brain import BrainDDQN
-
-    brain = BrainDDQN(task=test, memory=memory,
-                      main_network=main_network,
-                      target_network=target_network,
-                      base_epsilon=base_epsilon
-                      )
-
-    agent = AgentDDQN(brain)
-    env = EnvironmentDDQN(test, agent, max_steps=0)
-
+    from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder
+    env = NNetBuilder(test, "DDQN").build_environment()
     env.run()

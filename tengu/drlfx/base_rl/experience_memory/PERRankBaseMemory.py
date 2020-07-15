@@ -27,12 +27,19 @@ class _bisect_wrapper():
 
 
 class PERRankBaseMemory(MemoryABC):
-    def __init__(self, capacity, alpha):
+    def __init__(self, capacity, per_alpha):
         self.capacity = capacity
         self.buffer = []
-        self.alpha = alpha
+        self.alpha = per_alpha
 
         self.max_priority = 1
+
+    @classmethod
+    def build(cls, builder):
+        return PERRankBaseMemory(
+            builder.args.get("memory_capacity",10000),
+            builder.args.get("per_alpha",0.6))
+
 
     def add(self, experience):
         if self.capacity <= len(self.buffer):
