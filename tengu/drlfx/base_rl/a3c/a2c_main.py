@@ -16,17 +16,17 @@ max_gram_norm = 0.5
 
 class RolloutStorage:
     def __init__(self, num_steps, num_processes, obs_shape):
-        self.observations = torch.zeros(num_steps + 1, num_processes, 4)
-        self.masks = torch.ones(num_steps + 1, num_processes, 1)
-        self.rewards = torch.zeros(num_steps, num_processes, 1)
-        self.actions = torch.zeros(num_steps, num_processes, 1).long()
+        self.state = np.zeros(shape=(num_steps + 1, num_processes, 4))
+        self.masks = np.ones(shape=(num_steps + 1, num_processes, 1))
+        self.rewards = np.zeros(shape=(num_steps, num_processes, 1))
+        self.actions = np.zeros(shape=(num_steps, num_processes, 1))
 
         # 割引報酬和
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.index = 0
 
     def insert(self, current_obs, action, reward, mask):
-        self.observations[self.index + 1].copy_(current_obs)
+        self.state[self.index + 1].copy_(current_obs)
         self.masks[self.index + 1].copy_(mask)
         self.rewards[self.index].copy_(reward)
         self.actions[self.index].copy_(action)
@@ -34,7 +34,7 @@ class RolloutStorage:
         self.index = (self.index + 1) % NUM_ADVANCED_STEP
 
     def after_update(self):
-        self.observations[0].copy_(self.observations[-1])
+        self.state[0].copy_(self.state[-1])
         self.masks[0].copy_(self.masks[-1])
 
     def compute_return(self, next_value):
@@ -64,7 +64,7 @@ class Net(nn.Module):
 
         return critic_output, actor_output
 
-    def act(self, x):
+    def get_action(self, x):
         '''状態xから行動を確率的に求める'''
         value, actor_output = self(x)
         # dim=1 で行動の種類方向にsoftmaxを計算
@@ -108,13 +108,20 @@ class Brain:
 
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=0.01)
 
+    def get_actioin(self,state):
+        return self.actor_critic.get_action(state)
+
+
+    def get_value(self,state):
+        return self.actor_critic.get_value(state)
+
     def update(self, rollouts):
         '''Advantageで計算した５つのstepを全て使って更新'''
-        obs_shape = rollouts.observations.size()[2:]  # torch.Size([4,84,84])
+        obs_shape = rollouts.state.size()[2:]  # torch.Size([4,84,84])
         num_steps = NUM_ADVANCED_STEP
         num_processes = NUM_PROCESSES
 
-        values, action_log_probs, entropy = self.actor_critic.evaluate_actions(rollouts.observations[:-1].view(-1, 4),
+        values, action_log_probs, entropy = self.actor_critic.evaluate_actions(rollouts.state[:-1].view(-1, 4),
                                                                                rollouts.actions.view(-1, 1))
         # rollouts.observations[:-1].view(-1, 4)  -> torch.Size([80, 4])
         # rollouts.actions.view(-1, 1) -> torch.Size([80, 1])
@@ -172,7 +179,7 @@ class Environment:
         )
         episode_rewards = torch.zeros([NUM_PROCESSES, 1])
         final_rewards = torch.zeros([NUM_PROCESSES, 1])
-        obs_np = np.zeros([NUM_PROCESSES, obs_shape])
+        state_np = np.zeros([NUM_PROCESSES, obs_shape])
         reward_np = np.zeros([NUM_PROCESSES, 1])
         done_np = np.zeros([NUM_PROCESSES, 1])
         each_step = np.zeros(NUM_PROCESSES)
@@ -185,20 +192,20 @@ class Environment:
         obs = torch.from_numpy(obs).float()  # torch.Size([16, 4])
         current_obs = obs
 
-        rollouts.observations[0].copy_(current_obs)
+        rollouts.state[0].copy_(current_obs)
 
         for j in range(NUM_EPISODES * NUM_PROCESSES):
 
             for step in range(NUM_ADVANCED_STEP):
                 # 行動を求める
                 with torch.no_grad():
-                    action = actor_critic.act(rollouts.observations[step])
+                    action = global_brain.get_actioin(rollouts.state[step])
 
                 # (16,1) -> (16,) -> tensor をnumpyに
                 actions = action.squeeze(1).numpy()
 
                 for i in range(NUM_PROCESSES):
-                    obs_np[i], reward_np[i], done_np[i], _ = envs[i].step(actions[i])
+                    state_np[i], reward_np[i], done_np[i], _ = envs[i].step(actions[i])
 
                     if done_np[i]:
                         # 環境０の時のみ出力
@@ -213,7 +220,7 @@ class Environment:
                             reward_np[i] = 1.0  # 立ったままなら報酬は1
 
                         each_step[i] = 0  # stepのリセット
-                        obs_np[i] = envs[i].reset()
+                        state_np[i] = envs[i].reset()
 
                     else:
                         reward_np[i] = 0.0
@@ -236,14 +243,14 @@ class Environment:
                 current_obs *= masks
 
                 # current_obsお更新
-                obs = torch.from_numpy(obs_np).float()  # torch.Size([16,4])
+                obs = torch.from_numpy(state_np).float()  # torch.Size([16,4])
                 current_obs = obs
 
                 # メモリオブジェクトいん今stepのtransitionを挿入
                 rollouts.insert(current_obs, action.data, reward, masks)
 
             with torch.no_grad():
-                next_value = actor_critic.get_value(rollouts.observations[-1]).detach()
+                next_value = global_brain.get_value(rollouts.state[-1]).detach()
 
             rollouts.compute_return(next_value)
 
