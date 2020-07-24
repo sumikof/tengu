@@ -16,31 +16,31 @@ max_gram_norm = 0.5
 
 class RolloutStorage:
     def __init__(self, num_steps, num_processes, obs_shape):
-        self.state = torch.zeros(num_steps + 1, num_processes, 4)
-        self.masks = torch.ones(num_steps + 1, num_processes, 1)
-        self.rewards = torch.zeros(num_steps, num_processes, 1)
-        self.actions = torch.zeros(num_steps, num_processes, 1).long()
+        self.state = np.zeros(shape=(num_steps + 1, num_processes, 4))
+        self.masks = np.ones(shape=(num_steps + 1, num_processes, 1))
+        self.rewards = np.zeros(shape=(num_steps, num_processes, 1))
+        self.actions = np.zeros(shape=(num_steps, num_processes, 1))
 
         # 割引報酬和
-        self.returns = torch.zeros(num_steps + 1, num_processes, 1)
+        self.returns = np.zeros(shape=(num_steps + 1, num_processes, 1))
         self.index = 0
 
     def insert(self, current_obs, action, reward, mask):
-        self.state[self.index + 1].copy_(current_obs)
-        self.masks[self.index + 1].copy_(mask)
-        self.rewards[self.index].copy_(reward)
-        self.actions[self.index].copy_(action)
+        self.state[self.index + 1] = current_obs.copy()
+        self.masks[self.index + 1] = mask.copy()
+        self.rewards[self.index] = reward.copy()
+        self.actions[self.index] = action.copy()
 
         self.index = (self.index + 1) % NUM_ADVANCED_STEP
 
     def after_update(self):
-        self.state[0].copy_(self.state[-1])
-        self.masks[0].copy_(self.masks[-1])
+        self.state[0] = self.state[-1].copy()
+        self.masks[0] = self.masks[-1].copy()
 
     def compute_return(self, next_value):
         '''割引報酬和を計算する'''
         self.returns[-1] = next_value
-        for ad_step in reversed(range(self.rewards.size(0))):
+        for ad_step in reversed(range(self.rewards.shape[0])):
             self.returns[ad_step] = self.returns[ad_step + 1] * GAMMA * self.masks[ad_step + 1] + self.rewards[ad_step]
 
 
@@ -109,10 +109,14 @@ class Brain:
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=0.01)
 
     def get_actioin(self, state):
-        return self.actor_critic.get_action(state)
+        state_tensor = torch.from_numpy(state).float()
+        action_tensor = self.actor_critic.get_action(state_tensor)
+        return action_tensor.detach().numpy().copy()
 
     def get_value(self, state):
-        return self.actor_critic.get_value(state)
+        state_tensor = torch.from_numpy(state).float()
+        value_tensor = self.actor_critic.get_value(state_tensor)
+        return value_tensor.detach().numpy().copy()
 
     def update(self, rollouts):
         '''Advantageで計算した５つのstepを全て使って更新'''
@@ -120,25 +124,36 @@ class Brain:
         num_steps = NUM_ADVANCED_STEP
         num_processes = NUM_PROCESSES
 
-        x = rollouts.state[:-1].view(-1, 4)
-        actions = rollouts.actions.view(-1, 1)
+        ##x = rollouts.state[:-1].view(-1, 4)
+        # x = rollouts.state[:-1].reshape(shape=(-1, 4))
+        x = torch.from_numpy(rollouts.state[:-1]).float()
+        x = x.view(-1, 4)
+
+        ##actions = rollouts.actions.view(-1, 1)
+        # actions = rollouts.actions.reshape(shape=(-1, 1))
+        actions = torch.from_numpy(rollouts.actions).long()
+        actions = actions.view(-1, 1)
+
         values, action_log_probs, entropy = self.actor_critic.evaluate_actions(x, actions)
         # rollouts.observations[:-1].view(-1, 4)  -> torch.Size([80, 4])
         # rollouts.actions.view(-1, 1) -> torch.Size([80, 1])
         # values -> torch.Size([80,1])
         # action_log_probs -> torch.Size([80,1])
         # entropy -> torch.Size([])
-        values = values.view(num_steps, num_processes, 1)  # torch.Size([5, 16, 1])
-        action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+        ##values = values.view(num_steps, num_processes, 1)  # torch.Size([5, 16, 1])
+        values = values.view(num_steps, num_processes, 1).detach().numpy().copy()  # torch.Size([5, 16, 1])
+        ##action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+        action_log_probs = action_log_probs.view(num_steps, num_processes, 1).detach().numpy().copy()
 
         # advantage (行動価値-状態価値)の計算
         advantages = rollouts.returns[:-1] - values  # torch.Size([5,16,1])
 
         # criticのlossを計算
-        value_loss = advantages.pow(2).mean()
+        ## value_loss = advantages.pow(2).mean()
+        value_loss = np.mean(np.power(advantages, 2))
 
         # Actorのgainを計算、あとでマイナスを掛けてlossにする
-        action_gain = (action_log_probs * advantages.detach()).mean()
+        action_gain = np.mean(action_log_probs * advantages)
         # detachしてadvantagesを定数にする
 
         # 誤差関数の総和
@@ -171,12 +186,12 @@ class Environment:
         global_brain = Brain(actor_critic)
 
         obs_shape = n_in
-        current_obs = torch.zeros(
-            NUM_PROCESSES, obs_shape
+        current_obs = np.zeros(shape=(NUM_PROCESSES, obs_shape))
+        rollouts = RolloutStorage(
+            NUM_ADVANCED_STEP, NUM_PROCESSES, obs_shape
         )
-        rollouts = RolloutStorage(NUM_ADVANCED_STEP, NUM_PROCESSES, obs_shape)
-        episode_rewards = torch.zeros([NUM_PROCESSES, 1])
-        final_rewards = torch.zeros([NUM_PROCESSES, 1])
+        episode_rewards = np.zeros(shape=[NUM_PROCESSES, 1])
+        final_rewards = np.zeros(shape=[NUM_PROCESSES, 1])
         state_np = np.zeros([NUM_PROCESSES, obs_shape])
         reward_np = np.zeros([NUM_PROCESSES, 1])
         done_np = np.zeros([NUM_PROCESSES, 1])
@@ -187,10 +202,10 @@ class Environment:
         obs = [envs[i].reset() for i in range(NUM_PROCESSES)]
 
         obs = np.array(obs)
-        obs = torch.from_numpy(obs).float()  # torch.Size([16, 4])
+        ## obs = torch.from_numpy(obs).float()  # torch.Size([16, 4])
         current_obs = obs
 
-        rollouts.state[0].copy_(current_obs)
+        rollouts.state[0] = current_obs.copy()
 
         for j in range(NUM_EPISODES * NUM_PROCESSES):
 
@@ -200,7 +215,8 @@ class Environment:
                     action = global_brain.get_actioin(rollouts.state[step])
 
                 # (16,1) -> (16,) -> tensor をnumpyに
-                actions = action.squeeze(1).numpy()
+                # actions = action.squeeze(1).numpy()
+                actions = action.reshape((NUM_PROCESSES,))
 
                 for i in range(NUM_PROCESSES):
                     state_np[i], reward_np[i], done_np[i], _ = envs[i].step(actions[i])
@@ -223,10 +239,12 @@ class Environment:
                     else:
                         reward_np[i] = 0.0
                         each_step[i] += 1
-                reward = torch.from_numpy(reward_np).float()
+                ## reward = torch.from_numpy(reward_np).float()
+                reward = reward_np
                 episode_rewards += reward
 
-                masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done_np])
+                ##masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done_np])
+                masks = np.array([[0.0] if done_ else [1.0] for done_ in done_np])
 
                 # 最後の試行のそう報酬を更新
                 final_rewards *= masks  # 継続中の場合は１を掛け算してそのまま、doneの時には０を掛け算してリセット
@@ -241,14 +259,16 @@ class Environment:
                 current_obs *= masks
 
                 # current_obsお更新
-                obs = torch.from_numpy(state_np).float()  # torch.Size([16,4])
-                current_obs = obs
+                ##obs = torch.from_numpy(state_np).float()  # torch.Size([16,4])
+                current_obs = state_np
 
-                # メモリオブジェクトいん今stepのtransitionを挿入
-                rollouts.insert(current_obs, action.data, reward, masks)
+                # メモリオブジェクトに今stepのtransitionを挿入
+                ##rollouts.insert(current_obs, action.data, reward, masks)
+                rollouts.insert(current_obs, action, reward, masks)
 
             with torch.no_grad():
-                next_value = global_brain.get_value(rollouts.state[-1]).detach()
+                ##next_value = global_brain.get_value(rollouts.state[-1]).detach()
+                next_value = global_brain.get_value(rollouts.state[-1])
 
             rollouts.compute_return(next_value)
 
@@ -256,11 +276,19 @@ class Environment:
 
             rollouts.after_update()
 
-            if final_rewards.sum().numpy() >= NUM_PROCESSES:
+            ##if final_rewards.sum().numpy() >= NUM_PROCESSES:
+            if final_rewards.sum() >= NUM_PROCESSES:
                 print("連続成功")
                 break
 
 
-if __name__ == '__main__':
+def test():
     cart_pole_env = Environment()
     cart_pole_env.run()
+
+
+if __name__ == '__main__':
+    test()
+    mask = np.array([[0.0] if i % 2 == 0 else [1.0] for i in range(5)])
+    print(mask)
+    print(1 - mask)
