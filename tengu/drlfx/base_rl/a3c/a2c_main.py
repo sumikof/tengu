@@ -6,7 +6,7 @@ ENV = 'CartPole-v0'
 GAMMA = 0.99
 MAX_STEP = 200
 NUM_EPISODES = 1000
-NUM_PROCESSES = 3
+NUM_PROCESSES = 16
 NUM_ADVANCED_STEP = 5
 
 value_loss_coef = 0.5
@@ -143,7 +143,6 @@ class Brain:
 
         # 誤差関数の総和
         total_loss = (value_loss * value_loss_coef - action_gain - entropy * enrtropy_coef)
-
         # 結合パラメータを更新
         self.actor_critic.train()  # 訓練モードに変更
         self.optimizer.zero_grad()  # 勾配をリセット

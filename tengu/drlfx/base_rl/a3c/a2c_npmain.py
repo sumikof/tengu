@@ -6,7 +6,7 @@ ENV = 'CartPole-v0'
 GAMMA = 0.99
 MAX_STEP = 200
 NUM_EPISODES = 1000
-NUM_PROCESSES = 3
+NUM_PROCESSES = 16
 NUM_ADVANCED_STEP = 5
 
 value_loss_coef = 0.5
@@ -140,25 +140,22 @@ class Brain:
         # values -> torch.Size([80,1])
         # action_log_probs -> torch.Size([80,1])
         # entropy -> torch.Size([])
-        ##values = values.view(num_steps, num_processes, 1)  # torch.Size([5, 16, 1])
-        values = values.view(num_steps, num_processes, 1).detach().numpy().copy()  # torch.Size([5, 16, 1])
-        ##action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
-        action_log_probs = action_log_probs.view(num_steps, num_processes, 1).detach().numpy().copy()
+        values = values.view(num_steps, num_processes, 1)  # torch.Size([5, 16, 1])
+        action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         # advantage (行動価値-状態価値)の計算
-        advantages = rollouts.returns[:-1] - values  # torch.Size([5,16,1])
+        returns = torch.from_numpy(rollouts.returns[:-1])
+        advantages = returns - values  # torch.Size([5,16,1])
 
         # criticのlossを計算
-        ## value_loss = advantages.pow(2).mean()
-        value_loss = np.mean(np.power(advantages, 2))
+        value_loss = advantages.pow(2).mean()
 
         # Actorのgainを計算、あとでマイナスを掛けてlossにする
-        action_gain = np.mean(action_log_probs * advantages)
+        action_gain = (action_log_probs * advantages.detach()).mean()
         # detachしてadvantagesを定数にする
 
         # 誤差関数の総和
         total_loss = (value_loss * value_loss_coef - action_gain - entropy * enrtropy_coef)
-
         # 結合パラメータを更新
         self.actor_critic.train()  # 訓練モードに変更
         self.optimizer.zero_grad()  # 勾配をリセット
