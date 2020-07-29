@@ -9,8 +9,6 @@ from torch import nn
 from torch import optim
 import torch.nn.functional as F
 
-from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder
-from tengu.drlfx.base_rl.sample.test_gym import TestCartPole
 
 
 class SimpleTorchNNet(nn.Module):
@@ -106,10 +104,11 @@ if __name__ == '__main__':
     from logging import basicConfig, INFO
 
     basicConfig(level=INFO)
-
+    from tengu.drlfx.base_rl.sample.test_gym import TestCartPole
     test = TestCartPole()
     test.save_weights = False
     test.reset()
 
+    from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder
     env = NNetBuilder(test, "DDQN", nnet=SimpleNNet).build_environment()
     env.run()

@@ -1,15 +1,13 @@
 from enum import Enum, auto
 
 from tengu.drlfx.base_rl.experience_memory.ReplayMemory import ReplayMemory
-from tengu.drlfx.base_rl.sample.dueling_network import DuelingNNet
-from tengu.drlfx.base_rl.sample.simple_nnet import SimpleNNet
 
 
 class BuilderArgument:
     def __init__(self):
         self.table = {
             'memory_type': ReplayMemory,
-            'nnet_type': SimpleNNet,
+            'nnet_type': None,
             'batch_size': 32,
             'gamma': 0.99,
             'base_epsilon': 0.99,
@@ -48,12 +46,17 @@ class NNetBuilder:
         self.memory = memory or self.args["memory_type"]
 
     def rl_set(self, rl_type):
-        from tengu.drlfx.base_rl.brain import BrainDDQN
-        from tengu.drlfx.base_rl.agent import AgentDDQN
-        from tengu.drlfx.base_rl.environment import EnvironmentDDQN
-        agent = AgentDDQN
-        brain = BrainDDQN
-        environment = EnvironmentDDQN
+        agent = None
+        brain = None
+        environment = None
+
+        if rl_type == "DDQN":
+            from tengu.drlfx.base_rl.brain import BrainDDQN
+            from tengu.drlfx.base_rl.agent import AgentDDQN
+            from tengu.drlfx.base_rl.environment import EnvironmentDDQN
+            agent = AgentDDQN
+            brain = BrainDDQN
+            environment = EnvironmentDDQN
         return agent, brain, environment
 
     def build_environment(self):
@@ -77,6 +80,9 @@ class NNetBuilder:
         return memory
 
     def build_network(self):
+        if self.nnet is None:
+            from tengu.drlfx.base_rl.sample.simple_nnet import SimpleNNet
+            self.nnet = SimpleNNet
         nnet = self.nnet.build(self)
         print(nnet)
         import os
@@ -94,5 +100,6 @@ if __name__ == '__main__':
     test.save_weights = False
     test.reset()
 
+    from tengu.drlfx.base_rl.sample.dueling_network import DuelingNNet
     env = NNetBuilder(test, "DDQN", nnet=DuelingNNet).build_environment()
     env.run()

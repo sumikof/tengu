@@ -1,13 +1,12 @@
 import numpy as np
 import gym
+import copy
 import torch
 
 ENV = 'CartPole-v0'
 GAMMA = 0.99
 MAX_STEP = 200
 NUM_EPISODES = 1000
-NUM_PROCESSES = 16
-NUM_ADVANCED_STEP = 5
 
 value_loss_coef = 0.5
 enrtropy_coef = 0.01
@@ -16,6 +15,7 @@ max_gram_norm = 0.5
 
 class RolloutStorage:
     def __init__(self, num_steps, num_processes, obs_shape):
+        self.num_steps = num_steps
         self.state = np.zeros(shape=(num_steps + 1, num_processes, 4))
         self.masks = np.ones(shape=(num_steps + 1, num_processes, 1))
         self.rewards = np.zeros(shape=(num_steps, num_processes, 1))
@@ -31,7 +31,7 @@ class RolloutStorage:
         self.rewards[self.index] = reward.copy()
         self.actions[self.index] = action.copy()
 
-        self.index = (self.index + 1) % NUM_ADVANCED_STEP
+        self.index = (self.index + 1) % self.num_steps
 
     def after_update(self):
         self.state[0] = self.state[-1].copy()
@@ -48,13 +48,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class Net(nn.Module):
-    def __init__(self, n_in, n_mid, n_out):
-        super(Net, self).__init__()
-        self.fc1 = nn.Linear(n_in, n_mid)
+class A2CNet(nn.Module):
+    def __init__(self, num_states, num_actions, n_mid=32):
+        super(A2CNet, self).__init__()
+        self.fc1 = nn.Linear(num_states, n_mid)
         self.fc2 = nn.Linear(n_mid, n_mid)
-        self.actor = nn.Linear(n_mid, n_out)
+        self.actor = nn.Linear(n_mid, num_actions)
         self.critic = nn.Linear(n_mid, 1)
+
+    @classmethod
+    def build(cls, builder):
+        return A2CNet(num_states=builder.test.num_status, num_actions=builder.test.num_actions
+                      )
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x))
@@ -102,11 +107,20 @@ import torch
 from torch import optim
 
 
-class Brain:
-    def __init__(self, actor_critic):
+class A2CBrain:
+    def __init__(self, actor_critic, num_processes, num_advanced_steps):
         self.actor_critic = actor_critic
-
+        self.num_processes = num_processes
+        self.num_advanced_steps = num_advanced_steps
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=0.01)
+
+    @classmethod
+    def build(cls, builder):
+        return A2CBrain(
+            actor_critic=builder.build_network(),
+            num_processes=builder.args.get('num_processes', 16),
+            num_advanced_steps=builder.args.get('num_steps', 5)
+        )
 
     def get_actioin(self, state):
         state_tensor = torch.from_numpy(state).float()
@@ -120,19 +134,14 @@ class Brain:
         return value_tensor.detach().numpy().copy()
 
     def update(self, rollouts):
-        '''Advantageで計算した５つのstepを全て使って更新'''
+        """Advantageで計算した５つのstepを全て使って更新"""
 
-        ##obs_shape = rollouts.state.size()[2:]  # torch.Size([4,84,84])
-        num_steps = NUM_ADVANCED_STEP
-        num_processes = NUM_PROCESSES
+        num_steps = self.num_advanced_steps
+        num_processes = self.num_processes
 
-        ##x = rollouts.state[:-1].view(-1, 4)
-        # x = rollouts.state[:-1].reshape(shape=(-1, 4))
         x = torch.from_numpy(rollouts.state[:-1]).float()
         x = x.view(-1, 4)
 
-        ##actions = rollouts.actions.view(-1, 1)
-        # actions = rollouts.actions.reshape(shape=(-1, 1))
         actions = torch.from_numpy(rollouts.actions).long()
         actions = actions.view(-1, 1)
 
@@ -169,10 +178,7 @@ class Brain:
         self.optimizer.step()  # 結合パラメータを更新
 
 
-import copy
-
-
-class Agent:
+class A2CAgent:
     def __init__(self, state_num):
         self.episode_rewards = np.zeros(1)
         self.final_rewards = np.zeros(1)
@@ -181,52 +187,64 @@ class Agent:
         self.done = np.zeros(1)
         self.each_step = np.zeros(1)
 
+    @classmethod
+    def build(cls, builder):
+        return A2CAgent(
+            state_num=builder.test.num_status
+        )
 
-class Environment:
-    def __init__(self):
+
+class A2CEnvironment:
+    def __init__(self, agents, envs, global_brain, num_processes, num_steps, num_episodes, max_steps, num_states):
+        self.num_processes = num_processes
+        self.num_steps = num_steps
+        self.num_episodes = num_episodes
+        self.max_steps = max_steps
+
         # 同時実行する環境分envを生成
-        self.envs = [gym.make(ENV) for i in range(NUM_PROCESSES)]
+        # 全エージェントが共有するBrainを生成
+        self.envs = envs
+        self.agent_processes = agents
+        self.global_brain = global_brain
 
+        self.obs_shape = num_states
+        self.rollouts = RolloutStorage(
+            self.num_steps, self.num_processes, self.obs_shape
+        )
+
+    @classmethod
+    def build(cls, builder):
+        return A2CEnvironment(
+            [builder.build_agent() for _ in range(builder.args.get('num_processes', 16))],
+            [gym.make('CartPole-v0') for _ in range(builder.args.get('num_processes', 16))],
+            global_brain=builder.build_brain(),
+            num_processes=builder.args.get('num_processes', 16),
+            num_steps=builder.args.get('num_steps', 5),
+            num_episodes=builder.args.get('num_episodes', 300),
+            max_steps=builder.args.get('max_steps', 200),
+            num_states=builder.test.num_status
+        )
 
     def run(self):
-        '''メイン'''
-
-
-        # 全エージェントが共有するBrainを生成
-        n_in = self.envs[0].observation_space.shape[0]  # 状態4
-        n_out = self.envs[0].action_space.n  # action 2
-        n_mid = 32
-        actor_critic = Net(n_in, n_mid, n_out)
-        global_brain = Brain(actor_critic)
-
-        obs_shape = n_in
-        current_obs = np.zeros(shape=(NUM_PROCESSES, obs_shape))
-        rollouts = RolloutStorage(
-            NUM_ADVANCED_STEP, NUM_PROCESSES, obs_shape
-        )
-        episode_rewards = np.zeros(shape=[NUM_PROCESSES, 1])
-        final_rewards = np.zeros(shape=[NUM_PROCESSES, 1])
+        """メイン"""
+        episode_rewards = np.zeros(shape=[self.num_processes, 1])
+        final_rewards = np.zeros(shape=[self.num_processes, 1])
+        current_obs = np.array([self.envs[i].reset() for i in range(self.num_processes)])
 
         episode = 0
 
-        obs = [self.envs[i].reset() for i in range(NUM_PROCESSES)]
-        agent_processes = [Agent(n_in) for i in range(NUM_PROCESSES)]
+        self.rollouts.state[0] = current_obs.copy()
 
-        obs = np.array(obs)
-        current_obs = obs
+        for j in range(NUM_EPISODES * self.num_processes):
 
-        rollouts.state[0] = current_obs.copy()
-
-        for j in range(NUM_EPISODES * NUM_PROCESSES):
-
-            for step in range(NUM_ADVANCED_STEP):
+            for step in range(self.num_steps):
                 # 行動を求める
-                action = global_brain.get_actioin(rollouts.state[step])
+                action = self.global_brain.get_actioin(self.rollouts.state[step])
 
                 # (16,1) -> (16,) -> tensor をnumpyに
-                actions = action.reshape((NUM_PROCESSES,))
+                actions = action.reshape((self.num_processes,))
 
-                for i, agent in enumerate(agent_processes):
+                for i, agent in enumerate(self.agent_processes):
                     agent.state, agent.reward, agent.done, _ = self.envs[i].step(actions[i])
 
                     if agent.done:
@@ -248,10 +266,10 @@ class Environment:
                         agent.reward = 0.0
                         agent.each_step += 1
 
-                reward = [[agent.reward] for agent in agent_processes]
+                reward = [[agent.reward] for agent in self.agent_processes]
                 episode_rewards += reward
 
-                masks = np.array([[0.0] if ag.done else [1.0] for ag in agent_processes])
+                masks = np.array([[0.0] if ag.done else [1.0] for ag in self.agent_processes])
 
                 # 最後の試行のそう報酬を更新
                 final_rewards *= masks  # 継続中の場合は１を掛け算してそのまま、doneの時には０を掛け算してリセット
@@ -266,29 +284,41 @@ class Environment:
                 current_obs *= masks
 
                 # current_obsお更新
-                current_obs = [agent.state for agent in agent_processes]
+                current_obs = [agent.state for agent in self.agent_processes]
 
                 # メモリオブジェクトに今stepのtransitionを挿入
-                rollouts.insert(current_obs, action, reward, masks)
+                self.rollouts.insert(current_obs, action, reward, masks)
 
             with torch.no_grad():
-                next_value = global_brain.get_value(rollouts.state[-1])
+                next_value = self.global_brain.get_value(self.rollouts.state[-1])
 
-            rollouts.compute_return(next_value)
+            self.rollouts.compute_return(next_value)
 
-            global_brain.update(rollouts)
+            self.global_brain.update(self.rollouts)
 
-            rollouts.after_update()
+            self.rollouts.after_update()
 
-            if final_rewards.sum() >= NUM_PROCESSES:
+            if final_rewards.sum() >= self.num_processes:
                 print("連続成功")
                 break
 
 
 def test():
-    cart_pole_env = Environment()
+    cart_pole_env = A2CEnvironment()
     cart_pole_env.run()
 
 
 if __name__ == '__main__':
-    test()
+    from logging import basicConfig, INFO
+
+    basicConfig(level=INFO)
+
+    from tengu.drlfx.base_rl.sample.test_gym import TestCartPole
+
+    test = TestCartPole()
+
+    from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder, BuilderArgument
+
+    env = NNetBuilder(test, "A2C", args=BuilderArgument(),
+                      environment=A2CEnvironment, agent=A2CAgent, brain=A2CBrain, nnet=A2CNet).build_environment()
+    env.run()

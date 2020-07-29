@@ -74,8 +74,6 @@ if __name__ == '__main__':
     basicConfig(level=INFO)
 
     test = TestCartPole()
-    test.save_weights = False
-    test.reset()
 
     from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder
     env = NNetBuilder(test, "DDQN").build_environment()
