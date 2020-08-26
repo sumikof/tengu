@@ -43,7 +43,7 @@ class EnvironmentDDQN:
                 logger.debug("get action {}".format(action))
 
                 # 行動の実行（次の状態と終了判定を取得）
-                next_state, reward, done, _ = self.task.step(action, self)
+                next_state, reward, done, _ = self.task.step(action, step=self.step)
                 logger.debug("task.step done={}".format(done))
 
                 # メモリに追加

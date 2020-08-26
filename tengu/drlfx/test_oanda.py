@@ -12,7 +12,7 @@ from logging import getLogger, DEBUG
 
 logger = getLogger(__name__)
 
-StepState = namedtuple('stepstate', ('rates', 'position'))
+StepState = namedtuple('stepstate', ('rates', 'position', 'current_rate', 'mask'))
 
 ACTION_SIZE = 4
 
@@ -46,27 +46,32 @@ class RateMap:
         return t
 
 
-class TestOanda(TestABC):
-    position_mask = np.array([True, False, False, True])
-    non_position_mask = np.array([True, True, True, False])
+ERROR_REWARD = -1
+NO_TRADE_REWARD = -1
 
-    def __init__(self, lst, batch_size, rate_size, save_weights=False):
+
+class TestOanda(TestABC):
+    position_mask = np.array([1, 0, 0, 1])
+    non_position_mask = np.array([1, 1, 1, 0])
+    weight_file_name = 'test_oanda.hdf5'
+
+    def __init__(self, rate_list, batch_size, rate_size, spread=0.018, save_weights=False):
 
         self.num_actions = ACTION_SIZE  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
-        self.data_size = rate_size
+        self.rate_size = rate_size
         self.batch_size = batch_size
-        self.rate_lst = lst
-        self.complete_episodes = 0
-        self.portfolio = Portfolio(spread=0.018)
+        self.rate_list = rate_list
+        self.portfolio = Portfolio(spread=spread)
 
         self.batch = None
+        self.complete_episodes = 0
         self.index = 0
         self.end_index = 0
+        self._step_reward = 0
         self.total_reward = 0
 
-        self.rate_map = RateMap(self.data_size)
+        self.rate_map = RateMap(self.rate_size)
         self._save_weights = save_weights
-        self.weight_file_name = 'test_oanda.hdf5'
         self.reset()
 
     @property
@@ -76,6 +81,15 @@ class TestOanda(TestABC):
     @save_weights.setter
     def save_weights(self, bool):
         self._save_weights = bool
+
+    @property
+    def step_reward(self):
+        return self._step_reward
+
+    @step_reward.setter
+    def step_reward(self, reward):
+        self._step_reward = reward
+        self.total_reward += reward
 
     @property
     def mask(self):
@@ -118,8 +132,11 @@ class TestOanda(TestABC):
             raise NotImplementedError
         position = position * self.portfolio.current_profit(self.current_rate)
 
-        state = StepState(copy.copy(self.rate_map),
-                          np.append(position, self.current_rate))
+        state = StepState(np.array(copy.copy(self.rate_map).map),
+                          copy.copy(position),
+                          copy.copy(self.current_rate),
+                          copy.copy(self.mask))
+
         return state
 
     def reset(self):
@@ -127,18 +144,18 @@ class TestOanda(TestABC):
         self.portfolio.deposit(10000)
         self.batch = self._minibatch()
         self.index = 0
-        self.end_index = self.index + self.data_size - 1
+        self.end_index = self.index + self.rate_size - 1
         self.total_reward = 0
 
         self.rate_map.reset()
         self.rate_map.push(self._get_rates())
-        for i in range(self.data_size):
+        for i in range(self.rate_size):
             self._add_index()
         return self.state
 
     def _minibatch(self):
-        random_index = random.randint(0, len(self.rate_lst) - self.batch_size)
-        return self.rate_lst[random_index:random_index + self.batch_size]
+        random_index = random.randint(0, len(self.rate_list) - self.batch_size)
+        return self.rate_list[random_index:random_index + self.batch_size]
 
     def _add_index(self):
         self.index += 1
@@ -148,7 +165,7 @@ class TestOanda(TestABC):
         return done
 
     def _get_rates(self):
-        return self.batch[self.index:self.index + self.data_size]
+        return self.batch[self.index:self.index + self.rate_size]
 
     def _losscut(self):
         """強制ロスカット"""
@@ -166,7 +183,7 @@ class TestOanda(TestABC):
         return profit
 
     def step(self, action, env):
-        reward = 0
+        self.step_reward = 0
         done = False
         if action == 0:
             pass
@@ -186,7 +203,7 @@ class TestOanda(TestABC):
         elif action == 2:  # deal
             if self.portfolio.has_deals():
                 # すでにpositionある
-                logger.error( "position あるのに売建してるよ")
+                logger.error("position あるのに売建してるよ")
                 raise NotImplementedError
 
             amount = self.calc_deal_amount()
@@ -205,10 +222,10 @@ class TestOanda(TestABC):
             # ポジションを決済
             position_rate = self.position_rate
             current_rate = self.current_rate
-            reward = self.profit_reward
+            self.step_reward = self.profit_reward
 
-            logger.info("step is {} position rate {:.3f} ,close rate {:.3f} ,reward {:.3f}".format(
-                         env.step, position_rate, current_rate, reward))
+            logger.info("step is {} position rate {:.3f} ,close rate {:.3f} ,self.step_reward {:.3f}".format(
+                env.step, position_rate, current_rate, self.step_reward))
             self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
         if not done:
@@ -216,22 +233,18 @@ class TestOanda(TestABC):
             if self.portfolio.has_deals() and self.portfolio.current_balance(self.current_rate) < 0:
                 # 強制ロスカット,罰則
                 done = True
-                reward = -10
-
-        self.total_reward += reward
 
         if done:
             if len(self.portfolio.trading) == 0:
                 # 一回も取引していない場合は罰則
-                reward = -10
-                self.total_reward += reward
+                self.step_reward = NO_TRADE_REWARD
 
             if self.portfolio.has_deals():
                 # ポジション持ったまま終了 -> 決済して終わり
-                reward = self.profit_reward
-                self.total_reward += reward
+                self.step_reward = self.profit_reward
 
-                logger.info("finish close deal,rate {} ,reward {}".format(self.current_rate, reward))
+                logger.info(
+                    "finish close deal,rate {} ,self.step_reward {}".format(self.current_rate, self.step_reward))
                 self.portfolio.close_deal(env.step, self.current_rate, self.portfolio.deals.amount)
 
             next_state = self.blank_status
@@ -242,7 +255,7 @@ class TestOanda(TestABC):
 
         info = None
 
-        return next_state, reward, done, info
+        return next_state, self.step_reward, done, info
 
     def is_finish(self):
         return self.complete_episodes > 10
@@ -259,6 +272,11 @@ class TestOanda(TestABC):
         amount = math.floor(margin / rate / lot) * lot
 
         return amount
+
+    def __copy__(self):
+        return TestOanda(rate_list=self.rate_list, batch_size=self.batch_size, rate_size=self.rate_size,
+                         spread=self.portfolio.spread,
+                         save_weights=self.save_weights)
 
 
 def test_execute():

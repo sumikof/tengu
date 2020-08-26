@@ -43,7 +43,7 @@ class TestCartPole(TestABC):
         next_state, reward, done, info = self.env.step(action)
 
         if done:
-            print("done is step : " + str(environment.step))
+            #print("done is step : " + str(environment.step))
             next_state = self.blank_status
 
             # 報酬の設定

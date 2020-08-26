@@ -15,7 +15,7 @@ class TestABC(metaclass=ABCMeta):
 
     @abstractmethod
     def step(self, action, environment):
-        next_state, reward, done, info = None,None,None,None
+        next_state, reward, done, info = None, None, None, None
         return next_state, reward, done, info
 
     @abstractmethod
@@ -23,5 +23,5 @@ class TestABC(metaclass=ABCMeta):
         return False
 
     @abstractmethod
-    def check_status_is_done(self,state):
+    def check_status_is_done(self, state):
         return False

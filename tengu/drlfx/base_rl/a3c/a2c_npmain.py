@@ -14,9 +14,12 @@ max_gram_norm = 0.5
 
 
 class RolloutStorage:
-    def __init__(self, num_steps, num_processes, obs_shape):
+    def __init__(self, num_steps, num_processes):
         self.num_steps = num_steps
-        self.state = np.zeros(shape=(num_steps + 1, num_processes, 4))
+        self.state = [
+            [None for _ in range(num_processes)]
+            for _ in range(num_steps + 1)
+        ]
         self.masks = np.ones(shape=(num_steps + 1, num_processes, 1))
         self.rewards = np.zeros(shape=(num_steps, num_processes, 1))
         self.actions = np.zeros(shape=(num_steps, num_processes, 1))
@@ -49,17 +52,17 @@ import torch.nn.functional as F
 
 
 class A2CNet(nn.Module):
-    def __init__(self, num_states, num_actions, n_mid=32):
+    def __init__(self, num_actions, n_mid=32):
         super(A2CNet, self).__init__()
-        self.fc1 = nn.Linear(num_states, n_mid)
+        input_size = STATE_SIZE * STATE_SIZE
+        self.fc1 = nn.Linear(input_size, n_mid)
         self.fc2 = nn.Linear(n_mid, n_mid)
         self.actor = nn.Linear(n_mid, num_actions)
         self.critic = nn.Linear(n_mid, 1)
 
     @classmethod
     def build(cls, builder):
-        return A2CNet(num_states=builder.test.num_status, num_actions=builder.test.num_actions
-                      )
+        return A2CNet(num_actions=builder.test.num_actions)
 
     def forward(self, x):
         h1 = F.relu(self.fc1(x))
@@ -74,9 +77,9 @@ class A2CNet(nn.Module):
         value, actor_output = self(x)
         # dim=1 で行動の種類方向にsoftmaxを計算
         action_probs = F.softmax(actor_output, dim=1)
-        action = action_probs.multinomial(num_samples=1)
+        # action = action_probs.multinomial(num_samples=1)
         # dim=1で行動の種類方向に確率計算
-        return action
+        return action_probs
 
     def get_value(self, x):
         '''状態xから状態価値を求める'''
@@ -112,6 +115,7 @@ class A2CBrain:
         self.actor_critic = actor_critic
         self.num_processes = num_processes
         self.num_advanced_steps = num_advanced_steps
+        self.state_size = STATE_SIZE * STATE_SIZE
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=0.01)
 
     @classmethod
@@ -123,14 +127,23 @@ class A2CBrain:
         )
 
     def get_actioin(self, state):
-        state_tensor = torch.from_numpy(state).float()
+        action_masks = np.array([mask for rates, position, current_rate, mask in state])
+        input_state = np.array([rates.reshape(self.state_size) for rates, position, current_rate, mask in state])
+        input_state = input_state.reshape(self.num_processes, self.state_size)
+        state_tensor = torch.from_numpy(input_state).float()
+
         with torch.no_grad():
             action_tensor = self.actor_critic.get_action(state_tensor)
-        return action_tensor.detach().numpy().copy()
+            actions_np = action_tensor.detach().numpy().copy()
+        actions = np.array([[np.random.choice([0, 1, 2, 3] * mask, p=i)] for i, mask in zip(actions_np, action_masks)])
+        return actions
 
     def get_value(self, state):
-        state_tensor = torch.from_numpy(state).float()
-        value_tensor = self.actor_critic.get_value(state_tensor)
+        input_state = np.array([rates.reshape(self.state_size) for rates, position, current_rate, mask in state])
+        input_state = input_state.reshape(self.num_processes, self.state_size)
+        with torch.no_grad():
+            state_tensor = torch.from_numpy(input_state).float()
+            value_tensor = self.actor_critic.get_value(state_tensor)
         return value_tensor.detach().numpy().copy()
 
     def update(self, rollouts):
@@ -139,13 +152,18 @@ class A2CBrain:
         num_steps = self.num_advanced_steps
         num_processes = self.num_processes
 
-        x = torch.from_numpy(rollouts.state[:-1]).float()
-        x = x.view(-1, 4)
+        state_list = np.array(rollouts.state[:-1])
+
+        input_state = np.array(
+            [[rates.reshape(self.state_size) for rates, position, current_rate, mask in state] for state in
+             state_list])
+        state = torch.from_numpy(input_state).float()
+        state = state.view(-1, self.state_size)
 
         actions = torch.from_numpy(rollouts.actions).long()
         actions = actions.view(-1, 1)
 
-        values, action_log_probs, entropy = self.actor_critic.evaluate_actions(x, actions)
+        values, action_log_probs, entropy = self.actor_critic.evaluate_actions(state, actions)
 
         # rollouts.observations[:-1].view(-1, 4)  -> torch.Size([80, 4])
         # rollouts.actions.view(-1, 1) -> torch.Size([80, 1])
@@ -179,23 +197,21 @@ class A2CBrain:
 
 
 class A2CAgent:
-    def __init__(self, state_num):
+    def __init__(self):
         self.episode_rewards = np.zeros(1)
         self.final_rewards = np.zeros(1)
-        self.state = np.zeros(state_num)
+        self.state = None
         self.reward = np.zeros(1)
         self.done = np.zeros(1)
-        self.each_step = np.zeros(1)
+        self.step = np.zeros(1)
 
     @classmethod
     def build(cls, builder):
-        return A2CAgent(
-            state_num=builder.test.num_status
-        )
+        return A2CAgent()
 
 
 class A2CEnvironment:
-    def __init__(self, agents, envs, global_brain, num_processes, num_steps, num_episodes, max_steps, num_states):
+    def __init__(self, agents, envs, global_brain, num_processes, num_steps, num_episodes, max_steps):
         self.num_processes = num_processes
         self.num_steps = num_steps
         self.num_episodes = num_episodes
@@ -207,22 +223,20 @@ class A2CEnvironment:
         self.agent_processes = agents
         self.global_brain = global_brain
 
-        self.obs_shape = num_states
         self.rollouts = RolloutStorage(
-            self.num_steps, self.num_processes, self.obs_shape
+            self.num_steps, self.num_processes
         )
 
     @classmethod
     def build(cls, builder):
         return A2CEnvironment(
             [builder.build_agent() for _ in range(builder.args.get('num_processes', 16))],
-            [gym.make('CartPole-v0') for _ in range(builder.args.get('num_processes', 16))],
+            [copy.copy(builder.test) for _ in range(builder.args.get('num_processes', 16))],
             global_brain=builder.build_brain(),
             num_processes=builder.args.get('num_processes', 16),
             num_steps=builder.args.get('num_steps', 5),
             num_episodes=builder.args.get('num_episodes', 300),
-            max_steps=builder.args.get('max_steps', 200),
-            num_states=builder.test.num_status
+            max_steps=builder.args.get('max_steps', 200)
         )
 
     def run(self):
@@ -230,7 +244,6 @@ class A2CEnvironment:
         episode_rewards = np.zeros(shape=[self.num_processes, 1])
         final_rewards = np.zeros(shape=[self.num_processes, 1])
         current_obs = np.array([self.envs[i].reset() for i in range(self.num_processes)])
-
         episode = 0
 
         self.rollouts.state[0] = current_obs.copy()
@@ -245,26 +258,22 @@ class A2CEnvironment:
                 actions = action.reshape((self.num_processes,))
 
                 for i, agent in enumerate(self.agent_processes):
-                    agent.state, agent.reward, agent.done, _ = self.envs[i].step(actions[i])
+                    agent.state, agent.reward, agent.done, _ = self.envs[i].step(actions[i], agent)
 
                     if agent.done:
                         # 環境０の時のみ出力
                         if i == 0:
-                            print('{} Ebisode: Finished after {} steps'.format(episode, agent.each_step + 1))
+                            print(
+                                '{} Episode: Finished after {} steps, total reward = {}'.format(episode, agent.step + 1,
+                                                                                                self.envs[
+                                                                                                    i].total_reward))
                             episode += 1
 
-                        # 報酬の設定
-                        if agent.each_step < 195:
-                            agent.reward = -1.0
-                        else:
-                            agent.reward = 1.0  # 立ったままなら報酬は1
-
-                        agent.each_step = 0  # stepのリセット
+                        agent.step = 0  # stepのリセット
                         agent.state = self.envs[i].reset()
 
                     else:
-                        agent.reward = 0.0
-                        agent.each_step += 1
+                        agent.step += 1
 
                 reward = [[agent.reward] for agent in self.agent_processes]
                 episode_rewards += reward
@@ -284,13 +293,12 @@ class A2CEnvironment:
                 current_obs *= masks
 
                 # current_obsお更新
-                current_obs = [agent.state for agent in self.agent_processes]
+                current_obs = np.array([agent.state for agent in self.agent_processes])
 
                 # メモリオブジェクトに今stepのtransitionを挿入
                 self.rollouts.insert(current_obs, action, reward, masks)
 
-            with torch.no_grad():
-                next_value = self.global_brain.get_value(self.rollouts.state[-1])
+            next_value = self.global_brain.get_value(self.rollouts.state[-1])
 
             self.rollouts.compute_return(next_value)
 
@@ -298,27 +306,31 @@ class A2CEnvironment:
 
             self.rollouts.after_update()
 
-            if final_rewards.sum() >= self.num_processes:
-                print("連続成功")
+            if self.envs[0].is_finish():
                 break
 
 
+STATE_SIZE = 8
+
+
 def test():
-    cart_pole_env = A2CEnvironment()
-    cart_pole_env.run()
+    from logging import basicConfig, INFO, ERROR, CRITICAL
+    basicConfig(level=ERROR)
 
+    from tengu.oanda_action.oanda_dataframe import oanda_dataframe
+    from tengu.drlfx.test_oanda import TestOanda
 
-if __name__ == '__main__':
-    from logging import basicConfig, INFO
+    df_org = oanda_dataframe('../../../../USD_JPY_M1.csv')
 
-    basicConfig(level=INFO)
-
-    from tengu.drlfx.base_rl.sample.test_gym import TestCartPole
-
-    test = TestCartPole()
-
+    test = TestOanda(df_org['close'].values, (600), STATE_SIZE)
     from tengu.drlfx.base_rl.nnet_builder.nnet_builder import NNetBuilder, BuilderArgument
 
     env = NNetBuilder(test, "A2C", args=BuilderArgument(),
                       environment=A2CEnvironment, agent=A2CAgent, brain=A2CBrain, nnet=A2CNet).build_environment()
     env.run()
+
+
+if __name__ == '__main__':
+    v = np.random.multinomial(10000, [0.1, 0.3, 0.1, 0.5])
+    print(v)
+    test()
