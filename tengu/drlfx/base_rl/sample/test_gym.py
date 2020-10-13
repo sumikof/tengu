@@ -16,16 +16,6 @@ class TestCartPole(TestABC):
         self.num_status = num  # 状態を表す変数の数
         self.shape_status = [1, self.num_status]
         self.complete_episodes = 0
-        self._save_weights = False
-        self.weight_file_name = 'test_cart_pole.hdf5'
-
-    @property
-    def save_weights(self):
-        return self._save_weights
-
-    @save_weights.setter
-    def save_weights(self, is_save):
-        self._save_weights = is_save
 
     @property
     def blank_status(self):

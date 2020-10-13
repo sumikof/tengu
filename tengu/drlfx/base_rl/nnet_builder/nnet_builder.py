@@ -18,10 +18,12 @@ class BuilderArgument:
             'learning_rate': 0.01,
             'hidden_size': 10,
             'memory_capacity': 10000,
-            'per_alpha': 0.6
+            'per_alpha': 0.6,
+            'save_weights':False,
+            'weight_file_name':''
         }
 
-    def get(self, key, default_value):
+    def get(self, key, default_value=None):
         return self.table.get(key, default_value)
 
     def __getitem__(self, item):

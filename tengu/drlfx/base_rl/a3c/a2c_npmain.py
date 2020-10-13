@@ -1,7 +1,5 @@
 import numpy as np
-import gym
 import copy
-import torch
 
 ENV = 'CartPole-v0'
 GAMMA = 0.99
@@ -258,7 +256,7 @@ class A2CEnvironment:
                 actions = action.reshape((self.num_processes,))
 
                 for i, agent in enumerate(self.agent_processes):
-                    agent.state, agent.reward, agent.done, _ = self.envs[i].step(actions[i], agent)
+                    agent.state, agent.reward, agent.done, _ = self.envs[i].step(actions[i], agent.step)
 
                     if agent.done:
                         # 環境０の時のみ出力
@@ -314,7 +312,7 @@ STATE_SIZE = 8
 
 
 def test():
-    from logging import basicConfig, INFO, ERROR, CRITICAL
+    from logging import basicConfig, INFO, ERROR, CRITICAL, DEBUG
     basicConfig(level=ERROR)
 
     from tengu.oanda_action.oanda_dataframe import oanda_dataframe

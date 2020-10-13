@@ -4,13 +4,15 @@ logger = getLogger(__name__)
 
 
 class EnvironmentDDQN:
-    def __init__(self, agent, task, num_episodes, max_steps, train_interval):
+    def __init__(self, agent, task, num_episodes, max_steps, train_interval, save_weight=False, weight_file_name=None):
         self.task = task
         self.agent = agent
         self.num_episodes = num_episodes
         self.max_steps = max_steps
         self.step = 0
         self.train_interval = train_interval
+        self.save_weights = save_weight
+        self.weight_file_name = weight_file_name
 
     @classmethod
     def build(cls, builder):
@@ -19,7 +21,10 @@ class EnvironmentDDQN:
             builder.test,
             builder.args.get('num_episodes', 300),
             builder.args.get('max_steps', 200),
-            builder.args.get('train_interval', 2))
+            builder.args.get('train_interval', 2),
+            builder.args.get('save_weights'),
+            builder.args.get('weight_file_name')
+        )
 
     def run(self):
 
@@ -59,8 +64,8 @@ class EnvironmentDDQN:
                     if self.episode % 2 == 0:
                         self.agent.update_target_Q_function()
 
-                    if self.task.save_weights:
-                        self.agent.save_weights(self.task.weight_file_name)
+                    if self.save_weights:
+                        self.agent.save_weights(self.weight_file_name)
 
                     break
 

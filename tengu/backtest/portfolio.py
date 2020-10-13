@@ -25,8 +25,11 @@ class Trade:
         self._position = value
 
     def __str__(self):
-        return "date %s, position: %s,trade: %s,rate %f, amount %d" % (
+        return "(date %s, position: %s,trade: %s,rate %f, amount %d)" % (
             self.date, self.position_type, self.trade, self.rate, self.amount)
+
+    def __repr__(self):
+        return str(self)
 
 
 class Position:
@@ -42,10 +45,13 @@ class Position:
     def value(self, rate):
         return (rate - self.rate) * self.position_type * self.amount
 
+    def __repr__(self):
+        return "(position {},rate {},amount {})".format(self.position_type,self.rate,self.amount)
+
 
 class Portfolio:
 
-    def __init__(self, spread=0.0, deposit=0):
+    def __init__(self, *, spread=0.0, deposit=0):
         self.spread = spread
         self._balance = deposit
         self.trading = []
@@ -60,10 +66,11 @@ class Portfolio:
         """
         self._balance = dep
 
-    def reset(self):
+    def reset(self, *, deposit=0):
         self.trading = []
         self.deals = None
         self.total_profit = 0
+        self._balance = deposit
 
     def deal(self, date, position_type, rate, amount):
         """
@@ -119,6 +126,14 @@ class Portfolio:
     def current_balance(self, rate):
         return self.balance + self.current_profit(rate)
 
+    def __str__(self):
+        status = """
+        spread = {}
+        balance = {}
+        trading = {}
+        deals = {} 
+        """
+        return status.format(self.spread,self.balance,self.trading,self.deals)
 
 if __name__ == '__main__':
     portfolio = Portfolio(spread=0.018)
@@ -139,3 +154,5 @@ if __name__ == '__main__':
     portfolio.close_deal("2020/04/16", 110.1, 10000)
 
     portfolio.deal("2020/04/16", LONG, 113.415, 10000)
+
+    print(portfolio.deals.rate)
