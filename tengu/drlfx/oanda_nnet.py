@@ -5,7 +5,7 @@ import keras.backend as k
 import numpy as np
 
 from tengu.drlfx.base_rl.base_abc import NNetABC
-from tengu.drlfx.base_rl.loss_function import huberloss
+from tengu.drlfx.base_rl.modules.loss_function import huberloss
 from tengu.drlfx.test_oanda import ACTION_SIZE
 
 from logging import getLogger

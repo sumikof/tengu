@@ -64,8 +64,8 @@ def henka(df):
 def main():
     from tengu.oanda_action.oanda_dataframe import oanda_dataframe
     from tengu.drlfx.test_oanda import TestOanda
-    from tengu.drlfx.base_rl.agent import AgentDDQN
-    from tengu.drlfx.base_rl.brain import BrainDDQN
+    from tengu.drlfx.base_rl.DDQN.agent import AgentDDQN
+    from tengu.drlfx.base_rl.DDQN.brain import BrainDDQN
     from tengu.drlfx.oanda_nnet import OandaNNet
 
     df_org = oanda_dataframe('USD_JPY_M1_OLD.csv')
@@ -105,7 +105,7 @@ def main():
 
     agent = AgentDDQN(brain)
 
-    from tengu.drlfx.base_rl.environment import EnvironmentDDQN
+    from tengu.drlfx.base_rl.DDQN.environment import EnvironmentDDQN
     env = EnvironmentDDQN(test, agent, num_episodes=500, max_steps=0)
     env.run()
 

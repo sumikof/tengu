@@ -5,7 +5,7 @@ from keras.optimizers import Adam
 import numpy as np
 
 from tengu.drlfx.base_rl.base_abc import NNetABC
-from tengu.drlfx.base_rl.loss_function import huberloss
+from tengu.drlfx.base_rl.modules.loss_function import huberloss
 
 
 class DuelingNNet(NNetABC):

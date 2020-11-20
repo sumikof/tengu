@@ -53,9 +53,9 @@ class NNetBuilder:
         environment = None
 
         if rl_type == "DDQN":
-            from tengu.drlfx.base_rl.brain import BrainDDQN
-            from tengu.drlfx.base_rl.agent import AgentDDQN
-            from tengu.drlfx.base_rl.environment import EnvironmentDDQN
+            from tengu.drlfx.base_rl.DDQN.brain import BrainDDQN
+            from tengu.drlfx.base_rl.DDQN.agent import AgentDDQN
+            from tengu.drlfx.base_rl.DDQN.environment import EnvironmentDDQN
             agent = AgentDDQN
             brain = BrainDDQN
             environment = EnvironmentDDQN

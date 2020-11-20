@@ -1,5 +1,5 @@
 import math
-import numpy as np
+from numpy import inf
 
 import gym
 import gym.spaces
@@ -18,7 +18,7 @@ NO_TRADE_REWARD = -1
 
 class OandaEnv(gym.Env):
 
-    def __init__(self, rate_list, *, rate_size=60, test_size=60 * 24 * 7, spread=0.018):
+    def __init__(self, rate_list, *, rate_size=1, test_size=60 * 24 * 7, spread=0.018):
         self.portfolio = Portfolio(spread=spread, deposit=10000)
         self.exchanger = RateList(rate_list, state_size=rate_size, test_size=test_size)
 
@@ -26,28 +26,34 @@ class OandaEnv(gym.Env):
         self.done = False
 
         self.action_space = gym.spaces.Discrete(4)  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
+        self.observation_space = gym.spaces.Box(-inf,inf,shape=(3,))
+        """
         self.observation_space = gym.spaces.Dict(
             {
                 'rates': gym.spaces.Box(low=0, high=200, shape=(rate_size,)),  # 直近一時間のデータ
                 'position': gym.spaces.Box(low=0, high=200, shape=(2,)),  # positionの状態 [long,short]
             }
         )
+        """
         self.reward_range = [-1., 1.]
 
         self.reset()
 
     def step(self, action):
-
         done = False
         reward = 0
-        if action == 0:
-            pass
-        elif action == 1:  # deal
-            done = self.open_position(self.exchanger.index, LONG)
-        elif action == 2:  # deal
-            done = self.open_position(self.exchanger.index, SHORT)
-        else:  # close
-            reward = self.close_position(self.exchanger.index)
+        try:
+            if action == 0:
+                pass
+            elif action == 1:  # deal
+                done = self.open_position(self.exchanger.index, LONG)
+            elif action == 2:  # deal
+                done = self.open_position(self.exchanger.index, SHORT)
+            else:  # close
+                reward = self.close_position(self.exchanger.index)
+        except RuntimeError as e:
+            done = True
+            reward = -1
 
         #
         if not done:
@@ -103,9 +109,9 @@ class OandaEnv(gym.Env):
         pass
 
     def observe(self):
-        BLANK_STATUS = None
-        if self.is_done():
-            return BLANK_STATUS
+        # BLANK_STATUS = [0,0,0]
+        # if self.is_done():
+        #     return BLANK_STATUS
 
         rates = self.exchanger.copy_rate()
 
@@ -118,14 +124,19 @@ class OandaEnv(gym.Env):
         else:
             raise RuntimeError("そんなポジション認められてませーん")
 
+        rates.extend(position)
+        observation = rates
+        """
         observation = {
             'rates': rates,
             'position': position
         }
+        """
         return observation
 
     def is_done(self):
         return self.done
+
 
     def open_position(self, step, position):
         if self.portfolio.has_deals():
@@ -139,7 +150,10 @@ class OandaEnv(gym.Env):
             leverage = 100
             lot = 1000
             margin = balance * leverage
-            _amount = math.floor(margin / rate / lot) * lot
+            if not rate == 0:
+                _amount = math.floor(margin / rate / lot) * lot
+            else:
+                _amount = 1
             return _amount
 
         current_rate = self.exchanger.rate[-1]
@@ -168,6 +182,35 @@ class OandaEnv(gym.Env):
         return profit
 
     def current_profit(self, current_rate):
+        if not self.portfolio.has_deals():
+            return 0
         position_rate = self.portfolio.deals.rate
-        profit = (current_rate / position_rate - 1) * 100 * self.portfolio.deals.position_type
+        profit = (current_rate / position_rate - 1) * self.portfolio.deals.position_type # * 100
         return profit
+
+
+if __name__ == '__main__':
+    env = OandaEnv(rate_list=[i for i in range(1000)],rate_size=1,test_size=100)
+    print(env.action_space.n)
+    print(env.observation_space.shape)
+    obs = env.reset()
+    print(obs)
+    obs = env.step(0)
+    print(obs)
+    obs = env.step(1)
+    print(obs)
+    obs = env.step(0)
+    print(obs)
+    obs = env.step(0)
+    print(obs)
+    obs = env.step(3)
+    print(obs)
+    obs = env.step(0)
+    print(obs)
+    while not obs[2]:
+        obs = env.step(0)
+        print(obs)
+    print(env.portfolio.trading)
+
+
+

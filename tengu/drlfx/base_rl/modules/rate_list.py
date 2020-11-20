@@ -28,14 +28,14 @@ class RateList:
         return self._is_done(),self.rate
 
     def _is_done(self):
-        return self.test_size - self.state_size < self.index
+        return self.test_size - self.state_size <= self.index
 
     def _state(self):
         return self._mini_batch[self.index : self.index + self.state_size]
 
 
 if __name__ == '__main__':
-    rates = RateList(list(range(100)),3,10)
+    rates = RateList(list(range(100)),1,10)
     print(rates._mini_batch)
     print(rates.rate)
     done,_ = rates.next()
