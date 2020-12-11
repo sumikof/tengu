@@ -9,6 +9,7 @@ from keras import backend as K
 import numpy as np
 
 import multiprocessing as mp
+import multiprocessing.queues as mpqueue
 import math
 import os
 import pickle
@@ -18,6 +19,7 @@ import traceback
 import ctypes
 import random
 
+from tengu.drlfx.base_rl.modules.multi_queue import MultiQueue
 from .model import ModelBuilder
 from .model import DuelingNetwork, LstmType, UvfaType
 from .actor import Actor
@@ -39,6 +41,7 @@ for device in tf.config.experimental.list_physical_devices('GPU'):
         tf.config.experimental.set_virtual_device_configuration(device,
                                                                 [tf.config.LogicalDeviceConfiguration(
                                                                     memory_limit=memory_limit)])
+
 
 
 class Agent57():
@@ -259,13 +262,13 @@ class Agent57():
         self.train_count = mp.Value(ctypes.c_int, 0)
 
         # 経験通信用
-        exp_q = mp.Queue()
+        exp_q = MultiQueue(ctx=mp.get_context()) # OSX ではエラーが発生するために自作クラスに差し替え
 
         weights_qs = []
         self.is_actor_ends = []
         for _ in range(actor_num):
             # model weights通信用
-            weights_q = mp.Queue()
+            weights_q = MultiQueue(ctx=mp.get_context()) # OSX ではエラーが発生するために自作クラスに差し替え
             weights_qs.append(weights_q)
             self.is_actor_ends.append(mp.Value(ctypes.c_bool, False))
 

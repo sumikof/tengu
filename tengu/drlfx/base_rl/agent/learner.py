@@ -12,7 +12,6 @@ from .model import LstmType, UvfaType
 from .common import create_beta_list, create_gamma_list_agent57
 from .memory import EpisodeMemory, MemoryFactory
 
-
 class Learner():
     def __init__(self,
                  batch_size,
@@ -370,6 +369,8 @@ class Learner():
         if self.enable_intrinsic_reward:
             # emb network
             emb_act_batch = np.asarray(emb_act_batch)
+            state0_batch = np.reshape(state0_batch,(16,4,4)) # reshape入れないと後続でエラー
+            state1_batch = np.reshape(state1_batch,(16,4,4)) # reshape入れないと後続でエラー
             self.emb_train_model.train_on_batch([state0_batch, state1_batch], emb_act_batch)
 
             # rnd network

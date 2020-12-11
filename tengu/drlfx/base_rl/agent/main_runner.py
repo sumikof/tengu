@@ -66,27 +66,11 @@ def run_gym_agent57(
 
         manager.train(nb_trains, nb_time, callbacks=[save_manager, log])
 
-    # plt
-    log.drawGraph("train")
-
     # 訓練結果を見る
     agent = manager.createTestAgent(kwargs["actors"][0], "tmp_{}/last/learner.dat".format(env_name))
     if agent is None:
         return
-    agent.test(env, nb_episodes=5, visualize=True)
-
-    # 動画保存用
-    if movie_save:
-        movie = MovieLogger()
-        callbacks = [movie]
-        if kwargs["input_type"] != InputType.VALUES:
-            conv = ConvLayerView(agent)
-            callbacks.append(conv)
-        agent.test(env, nb_episodes=1, visualize=False, callbacks=callbacks)
-        movie.save(gifname="tmp/{}_1.gif".format(env_name), fps=30)
-        if kwargs["input_type"] != InputType.VALUES:
-            conv.save(grad_cam_layers=[], add_adv_layer=True, add_val_layer=True, 
-                end_frame=200, gifname="tmp/{}_2.gif".format(env_name), fps=10)
+    agent.test(env, nb_episodes=5, visualize=False)
 
     env.close()
 
