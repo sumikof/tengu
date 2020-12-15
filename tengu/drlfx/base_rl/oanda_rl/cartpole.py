@@ -12,7 +12,7 @@ from tengu.drlfx.base_rl.agent.model import ValueModel, DQNImageModel
 from tengu.drlfx.base_rl.agent.common import seed_everything
 from tengu.drlfx.base_rl.agent.callbacks import LoggerType
 
-from tengu.drlfx.base_rl.agent.main_runner import run_play, run_replay, run_gym_agent57
+from tengu.drlfx.base_rl.agent.main_runner import run_replay, run_gym_agent57
 
 seed_everything(42)
 ENV_NAME = "CartPole-v0"
@@ -166,12 +166,6 @@ def run_agent57(enable_train):
 
 
 if __name__ == '__main__':
-
-    # エピソードを作成、保存
-    if False:
-        env = gym.make(ENV_NAME)
-        kwargs = create_parameter(env, 0)
-        run_play(env, episode_save_dir, kwargs["processor"])
 
     # 複数Actorレーニング
     if True:

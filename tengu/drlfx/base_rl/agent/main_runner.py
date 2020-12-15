@@ -8,7 +8,6 @@ from .agent57 import Agent57
 from .model import InputType, DQNImageModel, LstmType
 from .policy import AnnealingEpsilonGreedy
 from .memory import PERRankBaseMemory, PERProportionalMemory
-from .env_play import EpisodeSave, EpisodeReplay
 
 from .callbacks import ConvLayerView, MovieLogger
 from .callbacks import LoggerType, TimeStop, TrainLogger, ModelIntervalCheckpoint
@@ -73,21 +72,6 @@ def run_gym_agent57(
     agent.test(env, nb_episodes=5, visualize=False)
 
     env.close()
-
-
-def run_play(env, episode_save_dir, processor, **kwargs):
-    es = EpisodeSave(env, 
-        episode_save_dir=episode_save_dir,
-        processor=processor,
-        font="arial")
-    es.play(**kwargs)
-    env.close()
-
-
-def run_replay(episode_save_dir, **kwargs):
-    r = EpisodeReplay(episode_save_dir, font="arial")
-    r.play(**kwargs)
-
 
 
 

@@ -1,6 +1,7 @@
 oanda.conf
 *.csv
 *.hdf5
+tmp*
 
 # Virtualenv
 # http://iamzed.com/2009/05/07/a-primer-on-virtualenv/

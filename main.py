@@ -63,57 +63,11 @@ def henka(df):
 
 def main():
     from tengu.oanda_action.oanda_dataframe import oanda_dataframe
-    from tengu.drlfx.test_oanda import TestOanda
-    from tengu.drlfx.base_rl.DDQN.agent import AgentDDQN
-    from tengu.drlfx.base_rl.DDQN.brain import BrainDDQN
-    from tengu.drlfx.oanda_nnet import OandaNNet
+    df_org = oanda_dataframe('USD_JPY_M1.csv')
+    from tengu.drlfx.base_rl.oanda_rl.oanda_agent import run_agent57,env_parameter
+    env_parameter.rate_list = df_org['close'].values.tolist()
+    run_agent57(enable_train=True)
 
-    df_org = oanda_dataframe('USD_JPY_M1_OLD.csv')
-    rate_size = 64
-
-    test = TestOanda(df_org['close'].values, (60 * 24 * 5), rate_size)
-    test.save_weights = False
-    load_weight = False
-
-    eta = 0.0001  # 学習係数
-    from logging import basicConfig, DEBUG, getLogger
-    logger = getLogger(__name__)
-    basicConfig(level=DEBUG)
-    main_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
-    target_network = OandaNNet(learning_rate=eta, rate_size=rate_size)
-    base_epsilon = 0.5
-
-    if load_weight and os.path.isfile(test.weight_file_name):
-        logger.debug("load weight_file: {}".format(test.weight_file_name))
-        main_network.load_weights(test.weight_file_name)
-        target_network.load_weights(test.weight_file_name)
-        main_network.model.summary(print_fn=logger.debug)
-        base_epsilon = 0.001
-
-    memory_capacity = 10000
-    per_alpha = 0.6
-    from tengu.drlfx.base_rl import experience_memory
-
-    memory = experience_memory.factory(memory_type=experience_memory.type.PERRankBaseMemory,
-                                       memory_capacity=memory_capacity, per_alpha=per_alpha)
-
-    brain = BrainDDQN(task=test, memory=memory,
-                      main_network=main_network,
-                      target_network=target_network,
-                      base_epsilon=base_epsilon
-                      )
-
-    agent = AgentDDQN(brain)
-
-    from tengu.drlfx.base_rl.DDQN.environment import EnvironmentDDQN
-    env = EnvironmentDDQN(test, agent, num_episodes=500, max_steps=0)
-    env.run()
-
-
-def fig(df):
-    import matplotlib.pyplot as plt
-    df.plot(figsize=(15, 5))
-    plt.show()
 
 
 if __name__ == '__main__':

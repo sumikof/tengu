@@ -114,7 +114,6 @@ class OandaEnv(gym.Env):
         #     return BLANK_STATUS
 
         rates = self.exchanger.copy_rate()
-
         if self.portfolio.deals is None:
             position = [0, 0]
         elif self.portfolio.deals.position_type == LONG:
@@ -123,7 +122,6 @@ class OandaEnv(gym.Env):
             position = [0, self.portfolio.position_rate()]
         else:
             raise RuntimeError("そんなポジション認められてませーん")
-
         rates.extend(position)
         observation = rates
         """

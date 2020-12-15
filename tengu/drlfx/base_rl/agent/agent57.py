@@ -19,12 +19,12 @@ import traceback
 import ctypes
 import random
 
+from tengu.drlfx.base_rl.agent.env_play import add_memory
 from tengu.drlfx.base_rl.modules.multi_queue import MultiQueue
 from .model import ModelBuilder
 from .model import DuelingNetwork, LstmType, UvfaType
 from .actor import Actor
 from .learner import Learner
-from .env_play import add_memory
 
 # 複数のプロセスでGPUを使用する設定
 # https://qiita.com/studio_haneya/items/4dfaf2fb2ac44818e7e0
