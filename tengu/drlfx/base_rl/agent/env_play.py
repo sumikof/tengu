@@ -1,18 +1,9 @@
-import gym
-import numpy as np
-from keras import backend as K
-import matplotlib.pyplot as plt
-import matplotlib.animation
-
+import glob
 import os
 import pickle
-from tkinter import Tk
-from tkinter import messagebox
-import glob
-import time
 
-from .model import LstmType
-from .model import ModelBuilder
+import numpy as np
+
 from .actor import Actor
 from .policy import EpsilonGreedy
 
@@ -63,7 +54,7 @@ def add_memory(episode_save_dir, memory, model_builder, kwargs):
             epi_states = pickle.load(f)
         if len(epi_states) <= 0:
             continue
-        
+
         if input_shape != np.asarray(epi_states[0]["observation"]).shape:
             print("episode shape is not match. input_shape{} != epi_shape{}".format(
                 input_shape,
@@ -74,7 +65,7 @@ def add_memory(episode_save_dir, memory, model_builder, kwargs):
         # init
         actor.training = True
         actor.episode_begin()
-        
+
         # episode
         total_reward = 0
         for step, epi_state in enumerate(epi_states):
@@ -100,4 +91,3 @@ def add_memory(episode_save_dir, memory, model_builder, kwargs):
             total_reward += epi_state["reward"]
 
         print("demo replay loaded, on_memory: {}, total reward: {}".format(len(memory), total_reward))
-

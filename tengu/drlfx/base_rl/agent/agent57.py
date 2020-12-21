@@ -1,30 +1,18 @@
-import tensorflow as tf
-import rl
-import rl.core
-import keras
-from keras.layers import Input, Flatten, Permute, TimeDistributed, LSTM, Dense, Concatenate, Reshape, Lambda
-from keras.models import Model
-from keras.models import model_from_json
-from keras import backend as K
-import numpy as np
-
+import ctypes
 import multiprocessing as mp
-import multiprocessing.queues as mpqueue
-import math
 import os
-import pickle
-import enum
 import time
 import traceback
-import ctypes
-import random
+
+import rl.core
+import tensorflow as tf
 
 from tengu.drlfx.base_rl.agent.env_play import add_memory
 from tengu.drlfx.base_rl.modules.multi_queue import MultiQueue
-from .model import ModelBuilder
-from .model import DuelingNetwork, LstmType, UvfaType
 from .actor import Actor
 from .learner import Learner
+from .model import DuelingNetwork, LstmType, UvfaType
+from .model import ModelBuilder
 
 # 複数のプロセスでGPUを使用する設定
 # https://qiita.com/studio_haneya/items/4dfaf2fb2ac44818e7e0
@@ -41,7 +29,6 @@ for device in tf.config.experimental.list_physical_devices('GPU'):
         tf.config.experimental.set_virtual_device_configuration(device,
                                                                 [tf.config.LogicalDeviceConfiguration(
                                                                     memory_limit=memory_limit)])
-
 
 
 class Agent57():
@@ -262,13 +249,13 @@ class Agent57():
         self.train_count = mp.Value(ctypes.c_int, 0)
 
         # 経験通信用
-        exp_q = MultiQueue(ctx=mp.get_context()) # OSX ではエラーが発生するために自作クラスに差し替え
+        exp_q = MultiQueue(ctx=mp.get_context())  # OSX ではエラーが発生するために自作クラスに差し替え
 
         weights_qs = []
         self.is_actor_ends = []
         for _ in range(actor_num):
             # model weights通信用
-            weights_q = MultiQueue(ctx=mp.get_context()) # OSX ではエラーが発生するために自作クラスに差し替え
+            weights_q = MultiQueue(ctx=mp.get_context())  # OSX ではエラーが発生するために自作クラスに差し替え
             weights_qs.append(weights_q)
             self.is_actor_ends.append(mp.Value(ctypes.c_bool, False))
 
@@ -718,7 +705,7 @@ class ActorRunner(rl.core.Agent):
         self.compiled = True  # super
 
     def save_weights(self, filepath, overwrite=False):  # override
-        pass
+        self.actor.save_weights(filepath, overwrite)
 
     def load_weights(self, filepath):  # override
         self.actor.load_weights(filepath)

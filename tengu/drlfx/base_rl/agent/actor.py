@@ -131,7 +131,22 @@ class Actor():
             if self.enable_intrinsic_actval_model:
                 self.lstm_int = self.actval_int_model.get_layer("lstm")
 
-    
+    def save_weights(self, filepath, overwrite=False):  # override
+        if not (overwrite or not os.path.isfile(filepath)):
+            return
+        d = {
+            "weights_ext": self.actval_ext_model.get_weights(),
+        }
+        if self.enable_intrinsic_actval_model:
+            d["weights_int"] = self.actval_int_model.get_weights()
+        if self.enable_intrinsic_reward:
+            d["weights_rnd_train"] = self.rnd_train_model.get_weights()
+            d["weights_rnd_target"] = self.rnd_target_model.get_weights()
+            d["weights_emb"] = self.emb_model.get_weights()
+        with open(filepath, 'wb') as f:
+            pickle.dump(d, f)
+
+
     def load_weights(self, filepath):
         if not os.path.isfile(filepath):
             return

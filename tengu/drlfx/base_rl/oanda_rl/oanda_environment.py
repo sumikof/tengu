@@ -6,7 +6,7 @@ import gym.spaces
 
 from tengu.backtest.portfolio import Portfolio, LONG, SHORT
 
-from logging import getLogger, DEBUG
+from logging import getLogger
 
 from tengu.drlfx.base_rl.modules.rate_list import RateList
 
@@ -18,7 +18,7 @@ NO_TRADE_REWARD = -1
 
 class OandaEnv(gym.Env):
 
-    def __init__(self, rate_list, *, rate_size=1, test_size=60 * 24 * 7, spread=0.018):
+    def __init__(self, rate_list, *, rate_size=1, test_size=60 * 24 * 5, spread=0.018):
         self.portfolio = Portfolio(spread=spread, deposit=10000)
         self.exchanger = RateList(rate_list, state_size=rate_size, test_size=test_size)
 
@@ -26,7 +26,7 @@ class OandaEnv(gym.Env):
         self.done = False
 
         self.action_space = gym.spaces.Discrete(4)  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
-        self.observation_space = gym.spaces.Box(-inf,inf,shape=(3,))
+        self.observation_space = gym.spaces.Box(-inf, inf, shape=(3,))
         """
         self.observation_space = gym.spaces.Dict(
             {
@@ -51,7 +51,7 @@ class OandaEnv(gym.Env):
                 done = self.open_position(self.exchanger.index, SHORT)
             else:  # close
                 reward = self.close_position(self.exchanger.index)
-        except RuntimeError as e:
+        except RuntimeError:
             done = True
             reward = -1
 
@@ -135,7 +135,6 @@ class OandaEnv(gym.Env):
     def is_done(self):
         return self.done
 
-
     def open_position(self, step, position):
         if self.portfolio.has_deals():
             # すでにpositionある
@@ -183,12 +182,12 @@ class OandaEnv(gym.Env):
         if not self.portfolio.has_deals():
             return 0
         position_rate = self.portfolio.deals.rate
-        profit = (current_rate / position_rate - 1) * self.portfolio.deals.position_type # * 100
+        profit = (current_rate / position_rate - 1) * self.portfolio.deals.position_type  # * 100
         return profit
 
 
 if __name__ == '__main__':
-    env = OandaEnv(rate_list=[i for i in range(1000)],rate_size=1,test_size=100)
+    env = OandaEnv(rate_list=[i for i in range(1000)], rate_size=1, test_size=100)
     print(env.action_space.n)
     print(env.observation_space.shape)
     obs = env.reset()
@@ -209,6 +208,3 @@ if __name__ == '__main__':
         obs = env.step(0)
         print(obs)
     print(env.portfolio.trading)
-
-
-
