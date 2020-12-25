@@ -12,8 +12,9 @@ def run_agent57(enable_train):
             return OandaEnv(rate_list=self.rate_list)
 
     from tengu.drlfx.base_rl.agent.common import seed_everything
-    from datetime import datetime
-    seed_everything(datetime.now())
+    import time
+    seed = int(time.time())
+    seed_everything(seed)
 
     from tengu.drlfx.base_rl.agent.main_runner import run_gym_agent57
 
@@ -29,11 +30,12 @@ def run_agent57(enable_train):
     print("observation_space : " + str(env.observation_space))
     print("reward_range      : " + str(env.reward_range))
 
-    from tengu.common.parameter import TenguParameter
+    from tengu.common.parameter import TenguParameter,argument_config
     param = TenguParameter()
+    argument_config(param.general_param)
 
     from tengu.drlfx.base_rl.oanda_rl.oanda_agent import MyActor1
-    param.agent_param["actors"] = [MyActor1]  # [MyActor1, MyActor2]
+    param.agent_param["actors"] = [MyActor1 for _ in range(param.general_param["actor_num"])]  # [MyActor1, MyActor2]
 
     from tengu.drlfx.base_rl.agent.callbacks import LoggerType
 
@@ -57,9 +59,4 @@ def run_agent57(enable_train):
 
 if __name__ == '__main__':
     # 複数Actorレーニング
-    # run_agent57(enable_train=True)
-    from tengu.common.parameter import TenguParameter,argument_config
-
-    param = TenguParameter()
-    argument_config(param.general_param)
-    print(param.general_param)
+    run_agent57(enable_train=True)
