@@ -1,0 +1,83 @@
+# input
+memory: PERRankBaseMemory
+memory_kwargs:
+  alpha: 1.0
+  beta_initial: 0.0
+  beta_steps: 40000
+  capacity: 60000
+  enable_is: true
+nb_actions: 4
+optimizer_ext:
+  optimizer: Adam
+  optimizer_argument:
+    lr: 0.0005
+optimizer_int:
+  optimizer: Adam
+  optimizer_argument:
+    lr: 0.001
+optimizer_rnd:
+  optimizer: Adam
+  optimizer_argument:
+    lr: 0.001
+optimizer_emb:
+  optimizer: Adam
+  optimizer_argument:
+    lr: 0.0005
+
+# NN
+batch_size: 16
+input_sequence: 4
+dense_units_num: 32
+enable_dueling_network: true
+lstm_type: STATEFUL # 使用するLSTMアルゴリズム
+lstm_units_num: 32
+lstmful_input_length: 1
+
+# train
+memory_warmup_size: 1000
+target_model_update_interval: 3000
+enable_double_dqn: true
+enable_rescaling: false
+burnin_length: 2
+reward_multisteps: 3
+
+
+demo_memory: PERProportionalMemory
+demo_memory_kwargs:
+  alpha: 0.8
+  capacity: 100000
+demo_ratio_final: 0.001953125
+demo_ratio_initial: 1.0
+demo_ratio_steps: 40000
+
+episode_memory: PERProportionalMemory
+episode_memory_kwargs:
+  alpha: 0.8
+  capacity: 2000
+episode_ratio: 0.0625
+
+# intrinsic_reward
+policy_num: 8
+ucb_epsilon: 0.3
+ucb_window_size: 60
+gamma0: 0.999
+gamma1: 0.99
+gamma2: 0.9
+enable_intrinsic_actval_model: true
+beta_max: 0.3
+uvfa_ext:
+  - ACTION
+  - REWARD_EXT
+  - REWARD_INT
+  - POLICY
+uvfa_int:
+  - ACTION
+  - REWARD_EXT
+  - REWARD_INT
+  - POLICY
+# other
+processor: OandaProcessor
+step_interval: 1
+sync_actor_model_interval: 50 # learner から model を同期する間隔
+enable_add_episode_end_frame: true
+

@@ -27,13 +27,16 @@ def run_gym_agent57(
         test_episodes=10,
         is_load_weights=False,
         checkpoint_interval=0,
-        movie_save=False,
     ):
     base_dir = os.path.join("tmp_{}".format(env_name))
     os.makedirs(base_dir, exist_ok=True)
     print("nb_time  : {:.2f}m".format(nb_time/60))
     print("nb_trains: {}".format(nb_trains))
     weight_file = os.path.join(base_dir, "{}_weight.h5".format(env_name))
+
+    kwargs["input_shape"] = env.observation_space.shape
+    kwargs["nb_actions"] = env.action_space.n
+    kwargs["demo_episode_dir"] = "tmp_{}.".format(env_name)
 
     manager = Agent57(**kwargs)
 
