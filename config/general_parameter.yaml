@@ -1,5 +1,0 @@
-# general
-nb_trains: 40000  # 最大試行回数
-nb_time: 180  # 最大実行時間（秒）
-log_interval: 1000
-is_load_weights: True
