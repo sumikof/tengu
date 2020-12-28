@@ -1,6 +1,5 @@
 from keras.utils import to_categorical
 import numpy as np
-import tensorflow as tf
 from keras import backend as K
 
 import random

@@ -1,16 +1,7 @@
-import gym
-from keras.optimizers import Adam
-
-import traceback
 import os
 
 from .agent57 import Agent57
-from .model import InputType, DQNImageModel, LstmType
-from .policy import AnnealingEpsilonGreedy
-from .memory import PERRankBaseMemory, PERProportionalMemory
-
-from .callbacks import ConvLayerView, MovieLogger
-from .callbacks import LoggerType, TimeStop, TrainLogger, ModelIntervalCheckpoint
+from .callbacks import LoggerType
 from .callbacks import DisTrainLogger, DisSaveManager
 
 

@@ -8,7 +8,7 @@ import rl.core
 import tensorflow as tf
 
 from tengu.drlfx.base_rl.agent.env_play import add_memory
-from tengu.drlfx.base_rl.modules.multi_queue import MultiQueue
+from tengu.drlfx.base_rl.modules.queue_factory import queue_factory
 from .actor import Actor
 from .learner import Learner
 from .model import DuelingNetwork, LstmType, UvfaType
@@ -249,13 +249,13 @@ class Agent57():
         self.train_count = mp.Value(ctypes.c_int, 0)
 
         # 経験通信用
-        exp_q = MultiQueue(ctx=mp.get_context())  # OSX ではエラーが発生するために自作クラスに差し替え
+        exp_q = queue_factory(ctx=mp.get_context())
 
         weights_qs = []
         self.is_actor_ends = []
         for _ in range(actor_num):
             # model weights通信用
-            weights_q = MultiQueue(ctx=mp.get_context())  # OSX ではエラーが発生するために自作クラスに差し替え
+            weights_q = queue_factory(ctx=mp.get_context())
             weights_qs.append(weights_q)
             self.is_actor_ends.append(mp.Value(ctypes.c_bool, False))
 

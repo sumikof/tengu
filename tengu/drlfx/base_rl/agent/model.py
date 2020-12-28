@@ -3,7 +3,6 @@ from keras.layers import Input, Flatten, Permute, TimeDistributed, LSTM, Dense, 
     MaxPooling2D, Activation, Add
 import tensorflow as tf
 from keras import backend as K
-import numpy as np
 
 import enum
 
