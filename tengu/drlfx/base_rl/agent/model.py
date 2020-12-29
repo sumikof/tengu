@@ -2,19 +2,19 @@ from keras.models import Model
 from keras.layers import Input, Flatten, Permute, TimeDistributed, LSTM, Dense, Concatenate, Reshape, Lambda, Conv2D, \
     MaxPooling2D, Activation, Add
 import tensorflow as tf
-from keras import backend as K
+from keras import backend as keras_back
 
 import enum
 
 
 def clipped_error_loss(y_true, y_pred):
     err = y_true - y_pred  # エラー
-    L2 = 0.5 * K.square(err)
-    L1 = K.abs(err) - 0.5
+    l2 = 0.5 * keras_back.square(err)
+    l1 = keras_back.abs(err) - 0.5
 
     # エラーが[-1,1]区間ならL2、それ以外ならL1を選択する。
-    loss = tf.where((K.abs(err) < 1.0), L2, L1)  # Keras does not cover where function in tensorflow :-(
-    return K.mean(loss)
+    loss = tf.where((keras_back.abs(err) < 1.0), l2, l1)  # Keras does not cover where function in tensorflow :-(
+    return keras_back.mean(loss)
 
 
 class InputType(enum.Enum):
@@ -43,7 +43,7 @@ class UvfaType(enum.Enum):
     POLICY = 4
 
 
-class ModelBuilder():
+class ModelBuilder:
     def __init__(self,
                  input_shape,
                  input_type,
@@ -196,13 +196,15 @@ class ModelBuilder():
             # 連結で結合
             c = Concatenate()([v, adv])
             if self.dueling_network_type == DuelingNetwork.AVERAGE:
-                c = Lambda(lambda a: K.expand_dims(a[:, 0], -1) + a[:, 1:] - K.mean(a[:, 1:], axis=1, keepdims=True),
+                c = Lambda(lambda a: keras_back.expand_dims(a[:, 0], -1) + a[:, 1:] - keras_back.mean(a[:, 1:], axis=1,
+                                                                                                      keepdims=True),
                            output_shape=(self.nb_actions,))(c)
             elif self.dueling_network_type == DuelingNetwork.MAX:
-                c = Lambda(lambda a: K.expand_dims(a[:, 0], -1) + a[:, 1:] - K.max(a[:, 1:], axis=1, keepdims=True),
+                c = Lambda(lambda a: keras_back.expand_dims(a[:, 0], -1) + a[:, 1:] - keras_back.max(a[:, 1:], axis=1,
+                                                                                                     keepdims=True),
                            output_shape=(self.nb_actions,))(c)
             elif self.dueling_network_type == DuelingNetwork.NAIVE:
-                c = Lambda(lambda a: K.expand_dims(a[:, 0], -1) + a[:, 1:], output_shape=(self.nb_actions,))(c)
+                c = Lambda(lambda a: keras_back.expand_dims(a[:, 0], -1) + a[:, 1:], output_shape=(self.nb_actions,))(c)
             else:
                 raise ValueError('dueling_network_type is undefined')
         else:

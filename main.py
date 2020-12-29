@@ -1,28 +1,14 @@
 
+
 def run_agent57(enable_train):
-    from tengu.drlfx.base_rl.oanda_rl.oanda_agent import EnvironmentGenerator
 
-    class OandaEnvGenerator(EnvironmentGenerator):
-        def __init__(self, rate_list):
-            self.rate_list = rate_list
+    from tengu.common.parameter import TenguParameter,argument_config
+    param = TenguParameter()
+    argument_config(param.general_param)
 
-        def create_env(self):
-            from tengu.drlfx.base_rl.oanda_rl.oanda_environment import OandaEnv
-
-            return OandaEnv(rate_list=self.rate_list)
-
-    from tengu.drlfx.base_rl.agent.common import seed_everything
-    import time
-    seed = int(time.time())
-    seed_everything(seed)
-
-    from tengu.drlfx.base_rl.agent.main_runner import run_gym_agent57
-
-    from tengu.oanda_action.oanda_dataframe import oanda_dataframe
+    from tengu.drlfx.base_rl.oanda_rl.oanda_generator import OandaEnvGenerator
     from tengu.drlfx.base_rl.oanda_rl.oanda_agent import env_manager
-    df_org = oanda_dataframe('USD_JPY_M1.csv')
-    env_generator = OandaEnvGenerator(df_org['close'].values.tolist())
-    env_manager.set_generator(env_generator)
+    env_manager.set_generator(OandaEnvGenerator(param.general_param))
     env = env_manager.create_env()
 
     # ゲーム情報
@@ -30,15 +16,12 @@ def run_agent57(enable_train):
     print("observation_space : " + str(env.observation_space))
     print("reward_range      : " + str(env.reward_range))
 
-    from tengu.common.parameter import TenguParameter,argument_config
-    param = TenguParameter()
-    argument_config(param.general_param)
 
     from tengu.drlfx.base_rl.oanda_rl.oanda_agent import MyActor1
     param.agent_param["actors"] = [MyActor1 for _ in range(param.general_param["actor_num"])]  # [MyActor1, MyActor2]
 
     from tengu.drlfx.base_rl.agent.callbacks import LoggerType
-
+    from tengu.drlfx.base_rl.agent.main_runner import run_gym_agent57
     run_gym_agent57(
         enable_train,
         env,
@@ -58,5 +41,8 @@ def run_agent57(enable_train):
 
 
 if __name__ == '__main__':
+    from logging import basicConfig,DEBUG
+
+    basicConfig(level=DEBUG)
     # 複数Actorレーニング
     run_agent57(enable_train=True)

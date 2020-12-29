@@ -1,4 +1,10 @@
 # input
+input_type: Values
+input_model:
+  name: ValueModel
+  args:
+    dense_units: 32
+    layer_num: 1
 memory: PERRankBaseMemory
 memory_kwargs:
   alpha: 1.0

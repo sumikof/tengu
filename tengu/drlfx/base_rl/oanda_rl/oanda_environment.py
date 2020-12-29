@@ -99,6 +99,7 @@ class OandaEnv(gym.Env):
         self.portfolio.reset(deposit=10000)
         self.exchanger.reset()
         self.done = False
+        logger.debug("reset rate:{}".format(self.exchanger.rate_list[0:5]))
 
         return self.observe()
 

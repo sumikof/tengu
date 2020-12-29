@@ -19,6 +19,12 @@ def run_gym_agent57(
         is_load_weights=False,
         checkpoint_interval=0,
     ):
+
+    from tengu.drlfx.base_rl.agent.common import seed_everything
+    import time
+    seed_everything(int(time.time()))
+
+
     base_dir = os.path.join("tmp_{}".format(env_name))
     os.makedirs(base_dir, exist_ok=True)
     print("nb_time  : {:.2f}m".format(nb_time/60))

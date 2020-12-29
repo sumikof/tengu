@@ -37,6 +37,21 @@ def set_lstm_type(kwargs):
         raise NotImplementedError
 
 
+def set_input_type(kwargs):
+    if kwargs["input_type"] == "Values":
+        from tengu.drlfx.base_rl.agent.model import InputType
+        kwargs["input_type"] = InputType.VALUES
+    else:
+        raise NotImplementedError
+
+def set_input_model(kwargs):
+    if kwargs["input_model"]["name"] == "ValueModel":
+        from tengu.drlfx.base_rl.agent.model import ValueModel
+        kwargs["input_model"] = ValueModel(**kwargs["input_model"]["args"])
+    else:
+        raise NotImplementedError
+
+
 def set_intrinsic_reward(kwargs):
     def get_intrinsic_reward(name):
         from tengu.drlfx.base_rl.agent.model import UvfaType
@@ -101,15 +116,11 @@ class TenguParameter:
         kwargs = self.read_parameter_file(self.agent_parameter_file)
         set_optimizer(kwargs)
         set_lstm_type(kwargs)
+        set_input_type(kwargs)
+        set_input_model(kwargs)
         set_intrinsic_reward(kwargs)
 
-
-        from tengu.drlfx.base_rl.agent.model import InputType
-        from tengu.drlfx.base_rl.agent.model import ValueModel
         from tengu.drlfx.base_rl.oanda_rl.oanda_processor import OandaProcessor
-
-        kwargs["input_type"] = InputType.VALUES
-        kwargs["input_model"] = ValueModel(32, 1)
 
         # other
         kwargs["processor"] = OandaProcessor()
