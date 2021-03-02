@@ -8,3 +8,4 @@ rate_csv: USD_JPY_M1.csv
 rate_size: 1
 test_size: 7200 # 60 * 24 * 5 （分）
 spread: 0.018
+basic_loglevel: ERROR

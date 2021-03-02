@@ -11,6 +11,9 @@ def run_agent57(enable_train):
     env_manager.set_generator(OandaEnvGenerator(param.general_param))
     env = env_manager.create_env()
 
+    from logging import basicConfig
+    basicConfig(level=param.general_param["basic_loglevel"])
+
     # ゲーム情報
     print("action_space      : " + str(env.action_space))
     print("observation_space : " + str(env.observation_space))
@@ -41,8 +44,6 @@ def run_agent57(enable_train):
 
 
 if __name__ == '__main__':
-    from logging import basicConfig,DEBUG
 
-    basicConfig(level=DEBUG)
     # 複数Actorレーニング
     run_agent57(enable_train=True)

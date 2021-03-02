@@ -72,6 +72,18 @@ def set_intrinsic_reward(kwargs):
     convert_uvfa(kwargs, "uvfa_ext")
     convert_uvfa(kwargs, "uvfa_int")
 
+def set_loglevel(kwargs):
+    if kwargs["basic_loglevel"] == "ERROR":
+        from logging import ERROR
+        kwargs["basic_loglevel"] = ERROR
+    elif kwargs["basic_loglevel"] == "DEBUG":
+        from logging import DEBUG
+        kwargs["basic_loglevel"] = DEBUG
+    elif kwargs["basic_loglevel"] == "INFO":
+        from logging import INFO
+        kwargs["basic_loglevel"] = INFO
+    else:
+        raise NotImplementedError
 
 class TenguParameter:
     config_directory = 'config/'
@@ -128,7 +140,9 @@ class TenguParameter:
         return kwargs
 
     def create_general_parameter(self):
-        return self.read_parameter_file(self.general_parametr_file)
+        kwargs = self.read_parameter_file(self.general_parametr_file)
+        set_loglevel(kwargs)
+        return kwargs
 
     def update_config(self, config, user_config):
         for key,val in user_config.items():
