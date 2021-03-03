@@ -4,7 +4,7 @@ from rl.core import Processor
 class OandaProcessor(Processor):
 
     def process_observation(self, observation):
-        print("state: {}".format(observation))
+        print("OandaProcessor State: {}".format(observation))
         return observation
 
     def process_reward(self, reward):
@@ -14,5 +14,5 @@ class OandaProcessor(Processor):
         return info
 
     def process_action(self, action):
-        print("action :{}".format(action))
+        print("OandaProcessor Action :{}".format(action))
         return action

@@ -33,6 +33,8 @@ class RateList:
     def _state(self):
         return self._mini_batch[self.index : self.index + self.state_size]
 
+    def __str__(self):
+        return "RateList {}".format(self.rate_list)
 
 if __name__ == '__main__':
     rates = RateList(list(range(100)),1,10)

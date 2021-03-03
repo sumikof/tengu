@@ -20,7 +20,7 @@ class OandaEnv(gym.Env):
 
     def __init__(self, rate_list, *, rate_size=1, test_size=60 * 24 * 5, spread=0.018):
         self.portfolio = Portfolio(spread=spread, deposit=10000)
-        self.exchanger = RateList(rate_list, state_size=rate_size, test_size=test_size)
+        self.rate_llist = RateList(rate_list, state_size=rate_size, test_size=test_size)
 
         self.total_reward = 0
         self.done = False
@@ -46,19 +46,20 @@ class OandaEnv(gym.Env):
             if action == 0:
                 pass
             elif action == 1:  # deal
-                done = self.open_position(self.exchanger.index, LONG)
+                done = self.open_position(self.rate_llist.index, LONG)
             elif action == 2:  # deal
-                done = self.open_position(self.exchanger.index, SHORT)
+                done = self.open_position(self.rate_llist.index, SHORT)
             else:  # close
-                reward = self.close_position(self.exchanger.index)
-        except RuntimeError:
+                reward = self.close_position(self.rate_llist.index)
+        except RuntimeError as e:
+            logger.debug("RuntimeError: {}".format(str(e)))
             done = True
             reward = -1
 
-        #
+        # 次の時間に進む
         if not done:
-            done, _ = self.exchanger.next()
-            current_rate = self.exchanger.rate[-1]
+            done, _ = self.rate_llist.next()
+            current_rate = self.rate_llist.rate[-1]
             profit = self.current_profit(current_rate)
 
             if profit < -1:
@@ -75,19 +76,20 @@ class OandaEnv(gym.Env):
                 # 強制ロスカット,罰則
                 done = True
 
-        #
+        # 取引が終了
         if done:
+            # 一回も取引していない場合は罰則
             if len(self.portfolio.trading) == 0:
-                # 一回も取引していない場合は罰則
                 reward = NO_TRADE_REWARD
+
+            # ポジション持ったまま終了 -> 決済して終わり
             if self.portfolio.has_deals():
-                # ポジション持ったまま終了 -> 決済して終わり
-                reward = self.close_position(self.exchanger.index)
+                reward = self.close_position(self.rate_llist.index)
                 logger.info(
-                    "finish close deal,rate {} ,self.step_reward {}".format(self.exchanger.rate[-1], reward))
+                    "finish close deal,rate {} ,self.step_reward {}".format(self.rate_llist.rate[-1], reward))
 
             logger.info("step index {} ,trading num {} ,finish total_reward {} last balance{}".format(
-                self.exchanger.index, len(self.portfolio.trading), self.total_reward, self.portfolio.balance))
+                self.rate_llist.index, len(self.portfolio.trading), self.total_reward, self.portfolio.balance))
 
         self.done = done
         observe = self.observe()
@@ -97,9 +99,9 @@ class OandaEnv(gym.Env):
 
     def reset(self):
         self.portfolio.reset(deposit=10000)
-        self.exchanger.reset()
+        self.rate_llist.reset()
         self.done = False
-        logger.debug("reset rate:{}".format(self.exchanger.rate_list[0:5]))
+        logger.debug("reset rate:{}".format(self.rate_llist.rate_list[0:5]))
 
         return self.observe()
 
@@ -114,7 +116,7 @@ class OandaEnv(gym.Env):
         # if self.is_done():
         #     return BLANK_STATUS
 
-        rates = self.exchanger.copy_rate()
+        rates = self.rate_llist.copy_rate()
         if self.portfolio.deals is None:
             position = [0, 0]
         elif self.portfolio.deals.position_type == LONG:
@@ -154,7 +156,7 @@ class OandaEnv(gym.Env):
                 _amount = 1
             return _amount
 
-        current_rate = self.exchanger.rate[-1]
+        current_rate = self.rate_llist.rate[-1]
         amount = calc_deal_amount(current_rate, self.portfolio.balance)
         logger.info("step {},open long deal,rate {:.3f}, amount {}".format(step, current_rate, amount))
         if amount < 1:
@@ -171,7 +173,7 @@ class OandaEnv(gym.Env):
 
         # ポジションを決済
         position_rate = self.portfolio.deals.rate
-        current_rate = self.exchanger.rate[-1]
+        current_rate = self.rate_llist.rate[-1]
         profit = self.current_profit(current_rate)
 
         logger.info("step is {} position rate {:.3f} ,close rate {:.3f} ,self.step_reward {:.3f}".format(
