@@ -2,7 +2,7 @@ class OandaEnvGenerator:
 
     def __init__(self, param):
         self.oanda_param = {
-            "rate_size": 1,
+            "state_size": 1,
             "test_size": 60 * 24 * 5,
             "spread": 0.018
         }

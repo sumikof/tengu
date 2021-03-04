@@ -76,6 +76,9 @@ def set_loglevel(kwargs):
     if kwargs["basic_loglevel"] == "ERROR":
         from logging import ERROR
         kwargs["basic_loglevel"] = ERROR
+    elif kwargs["basic_loglevel"] == "WARNING":
+        from logging import WARNING
+        kwargs["basic_loglevel"] = WARNING
     elif kwargs["basic_loglevel"] == "DEBUG":
         from logging import DEBUG
         kwargs["basic_loglevel"] = DEBUG

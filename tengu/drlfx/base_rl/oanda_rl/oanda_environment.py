@@ -1,3 +1,4 @@
+import copy
 import math
 from numpy import inf
 
@@ -18,23 +19,23 @@ NO_TRADE_REWARD = -1
 
 class OandaEnv(gym.Env):
 
-    def __init__(self, rate_list, *, rate_size=1, test_size=60 * 24 * 5, spread=0.018):
+    def __init__(self, rate_list, *, state_size=1, test_size=60 * 24 * 5, spread=0.018):
         self.portfolio = Portfolio(spread=spread, deposit=10000)
-        self.rate_llist = RateList(rate_list, state_size=rate_size, test_size=test_size)
+        self.rate_llist = RateList(rate_list, state_size=state_size, test_size=test_size)
 
         self.total_reward = 0
         self.done = False
 
         self.action_space = gym.spaces.Discrete(4)  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
-        self.observation_space = gym.spaces.Box(-inf, inf, shape=(3,))
-        """
         self.observation_space = gym.spaces.Dict(
             {
-                'rates': gym.spaces.Box(low=0, high=200, shape=(rate_size,)),  # 直近一時間のデータ
+                'rates': gym.spaces.Box(low=--inf, high=inf, shape=(state_size,)),  # 直近一時間のデータ
                 'position': gym.spaces.Box(low=0, high=200, shape=(2,)),  # positionの状態 [long,short]
             }
         )
-        """
+        # self.observation_space.shape = (state_size + 2,)
+        self.observation_space = gym.spaces.Box(-inf, inf, shape=(state_size + 2,))
+
         self.reward_range = [-1., 1.]
 
         self.reset()
@@ -42,6 +43,8 @@ class OandaEnv(gym.Env):
     def step(self, action):
         done = False
         reward = 0
+        err_msg = None
+        err_flag = False
         try:
             if action == 0:
                 pass
@@ -52,24 +55,25 @@ class OandaEnv(gym.Env):
             else:  # close
                 reward = self.close_position(self.rate_llist.index)
         except RuntimeError as e:
-            logger.debug("RuntimeError: {}".format(str(e)))
+            err_msg = str(e)
+            err_flag = True
             done = True
             reward = -1
 
         # 次の時間に進む
-        if not done:
+        if not err_flag and not done:
             done, _ = self.rate_llist.next()
             current_rate = self.rate_llist.rate[-1]
             profit = self.current_profit(current_rate)
 
             if profit < -1:
                 # loss cut
-                reward = self.close_position(current_rate)
+                reward = reward + self.close_position(current_rate)
                 logger.info("loss cut")
                 done = True
             if profit > 1:
                 # profit lock
-                reward = self.close_position(current_rate)
+                reward = reward + self.close_position(current_rate)
                 logger.info("profit lock")
                 done = True
             if self.portfolio.has_deals() and self.portfolio.current_balance(current_rate) < 0:
@@ -77,19 +81,32 @@ class OandaEnv(gym.Env):
                 done = True
 
         # 取引が終了
-        if done:
+        if not err_flag and done:
             # 一回も取引していない場合は罰則
             if len(self.portfolio.trading) == 0:
-                reward = NO_TRADE_REWARD
+                reward = reward + NO_TRADE_REWARD
 
             # ポジション持ったまま終了 -> 決済して終わり
             if self.portfolio.has_deals():
-                reward = self.close_position(self.rate_llist.index)
+                reward = reward + self.close_position(self.rate_llist.index)
                 logger.info(
                     "finish close deal,rate {} ,self.step_reward {}".format(self.rate_llist.rate[-1], reward))
 
+            self.total_reward += reward
             logger.info("step index {} ,trading num {} ,finish total_reward {} last balance{}".format(
                 self.rate_llist.index, len(self.portfolio.trading), self.total_reward, self.portfolio.balance))
+        elif err_flag:
+            self.total_reward = reward
+            logger.warning(
+                "ErrorDeal {} ,step index {} ,trading num {} ,finish total_reward {} last balance{}".format(
+                    err_msg,
+                    self.rate_llist.index,
+                    len(self.portfolio.trading),
+                    self.total_reward,
+                    self.portfolio.balance)
+            )
+        else:
+            self.total_reward += reward
 
         self.done = done
         observe = self.observe()
@@ -101,6 +118,7 @@ class OandaEnv(gym.Env):
         self.portfolio.reset(deposit=10000)
         self.rate_llist.reset()
         self.done = False
+        self.total_reward = 0
         logger.debug("reset rate:{}".format(self.rate_llist.rate_list[0:5]))
 
         return self.observe()
@@ -116,7 +134,7 @@ class OandaEnv(gym.Env):
         # if self.is_done():
         #     return BLANK_STATUS
 
-        rates = self.rate_llist.copy_rate()
+        rates = copy.copy(self.rate_llist.rate)
         if self.portfolio.deals is None:
             position = [0, 0]
         elif self.portfolio.deals.position_type == LONG:
@@ -125,14 +143,13 @@ class OandaEnv(gym.Env):
             position = [0, self.portfolio.position_rate()]
         else:
             raise RuntimeError("そんなポジション認められてませーん")
-        rates.extend(position)
-        observation = rates
-        """
+        #
         observation = {
             'rates': rates,
             'position': position
         }
-        """
+        rates.extend(position)
+        observation = rates
         return observation
 
     def is_done(self):
@@ -190,7 +207,7 @@ class OandaEnv(gym.Env):
 
 
 if __name__ == '__main__':
-    env = OandaEnv(rate_list=[i for i in range(1000)], rate_size=1, test_size=100)
+    env = OandaEnv(rate_list=[i for i in range(1000)], state_size=1, test_size=100)
     print(env.action_space.n)
     print(env.observation_space.shape)
     obs = env.reset()

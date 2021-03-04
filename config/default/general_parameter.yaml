@@ -3,9 +3,9 @@ nb_trains: 40000  # 最大試行回数
 nb_time: 3600  # 最大実行時間（秒）
 actor_num: 1
 log_interval: 1000
-is_load_weights: True
+is_load_weights: False
 rate_csv: USD_JPY_M1.csv
-rate_size: 1
+state_size: 1
 test_size: 7200 # 60 * 24 * 5 （分）
 spread: 0.018
 basic_loglevel: ERROR

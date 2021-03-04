@@ -17,6 +17,7 @@ def run_agent57(enable_train):
     # ゲーム情報
     print("action_space      : " + str(env.action_space))
     print("observation_space : " + str(env.observation_space))
+    print("observation_space.shae : " + str(env.observation_space.shape))
     print("reward_range      : " + str(env.reward_range))
 
 

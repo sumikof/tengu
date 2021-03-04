@@ -10,9 +10,6 @@ class RateList:
         self.index = 0
         self.reset()
 
-    def copy_rate(self):
-        return copy.copy(self._state())
-
     @property
     def rate(self):
         return self._state()

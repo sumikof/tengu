@@ -156,8 +156,7 @@ def run_agent57(enable_train):
         logger_type=LoggerType.STEP,
         log_interval=1000,
         test_env=create_env,
-        is_load_weights=False,
-        movie_save=False,
+        is_load_weights=False
     )
     env.close()
 
