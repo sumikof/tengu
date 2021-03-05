@@ -9,7 +9,7 @@ from tengu.backtest.portfolio import Portfolio, LONG, SHORT
 
 from logging import getLogger
 
-from tengu.drlfx.base_rl.modules.rate_list import RateList
+from tengu.drlfx.base_rl.modules.rate_list import RateSeries
 
 logger = getLogger(__name__)
 
@@ -19,9 +19,9 @@ NO_TRADE_REWARD = -1
 
 class OandaEnv(gym.Env):
 
-    def __init__(self, rate_list, *, state_size=1, test_size=60 * 24 * 5, spread=0.018):
+    def __init__(self, rate_list, *, test_size=60 * 24 * 5, spread=0.018):
         self.portfolio = Portfolio(spread=spread, deposit=10000)
-        self.rate_llist = RateList(rate_list, state_size=state_size, test_size=test_size)
+        self.rate_llist = RateSeries(rate_list, test_size=test_size)
 
         self.total_reward = 0
         self.done = False
@@ -29,12 +29,12 @@ class OandaEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(4)  # 取れる行動の数 0:何もしない 1:long open 2 sell open 3:close
         self.observation_space = gym.spaces.Dict(
             {
-                'rates': gym.spaces.Box(low=--inf, high=inf, shape=(state_size,)),  # 直近一時間のデータ
+                'rates': gym.spaces.Box(low=--inf, high=inf, shape=(self.rate_llist.state_size,)),  # 直近一時間のデータ
                 'position': gym.spaces.Box(low=0, high=200, shape=(2,)),  # positionの状態 [long,short]
             }
         )
         # self.observation_space.shape = (state_size + 2,)
-        self.observation_space = gym.spaces.Box(-inf, inf, shape=(state_size + 2,))
+        self.observation_space = gym.spaces.Box(-inf, inf, shape=(self.rate_llist.state_size + 2,))
 
         self.reward_range = [-1., 1.]
 
@@ -207,7 +207,7 @@ class OandaEnv(gym.Env):
 
 
 if __name__ == '__main__':
-    env = OandaEnv(rate_list=[i for i in range(1000)], state_size=1, test_size=100)
+    env = OandaEnv(rate_list=[i for i in range(1000)], test_size=100)
     print(env.action_space.n)
     print(env.observation_space.shape)
     obs = env.reset()
