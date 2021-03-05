@@ -18,16 +18,14 @@ def run_gym_agent57(
         test_episodes=10,
         is_load_weights=False,
         checkpoint_interval=0,
-    ):
-
-    from tengu.drlfx.base_rl.agent.common import seed_everything
+):
+    from tengu.drlfx.agent.common import seed_everything
     import time
     seed_everything(int(time.time()))
 
-
     base_dir = os.path.join("tmp_{}".format(env_name))
     os.makedirs(base_dir, exist_ok=True)
-    print("nb_time  : {:.2f}m".format(nb_time/60))
+    print("nb_time  : {:.2f}m".format(nb_time / 60))
     print("nb_trains: {}".format(nb_trains))
     weight_file = os.path.join(base_dir, "{}_weight.h5".format(env_name))
 
@@ -58,7 +56,7 @@ def run_gym_agent57(
             save_dirpath=base_dir,
             is_load=is_load_weights,
             save_memory=False,
-            checkpoint=(checkpoint_interval>0),
+            checkpoint=(checkpoint_interval > 0),
             checkpoint_interval=checkpoint_interval,
             verbose=0
         )
@@ -72,6 +70,3 @@ def run_gym_agent57(
     agent.test(env, nb_episodes=5, visualize=False)
 
     env.close()
-
-
-

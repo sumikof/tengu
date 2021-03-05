@@ -1,31 +1,31 @@
+def setup_loglevel(param):
+    from logging import basicConfig, getLogger
+    basicConfig(level=param.general_param["basic_loglevel"])
+    for module in param.general_param["module_loglevel"]:
+        getLogger(module["module_name"]).setLevel(level=module["loglevel"])
 
 
 def run_agent57(enable_train):
-
-    from tengu.common.parameter import TenguParameter,argument_config
+    from tengu.common.parameter import TenguParameter, argument_config
     param = TenguParameter()
     argument_config(param.general_param)
 
-    from tengu.drlfx.base_rl.oanda_rl.oanda_generator import OandaEnvGenerator
-    from tengu.drlfx.base_rl.oanda_rl.oanda_agent import env_manager
+    from tengu.drlfx.oanda_rl.oanda_generator import OandaEnvGenerator
+    from tengu.drlfx.oanda_rl.oanda_agent import env_manager
     env_manager.set_generator(OandaEnvGenerator(param.general_param))
     env = env_manager.create_env()
-
-    from logging import basicConfig
-    basicConfig(level=param.general_param["basic_loglevel"])
-
+    setup_loglevel(param)
     # ゲーム情報
     print("action_space      : " + str(env.action_space))
     print("observation_space : " + str(env.observation_space))
     print("observation_space.shae : " + str(env.observation_space.shape))
     print("reward_range      : " + str(env.reward_range))
 
-
-    from tengu.drlfx.base_rl.oanda_rl.oanda_agent import MyActor1
+    from tengu.drlfx.oanda_rl.oanda_agent import MyActor1
     param.agent_param["actors"] = [MyActor1 for _ in range(param.general_param["actor_num"])]  # [MyActor1, MyActor2]
 
-    from tengu.drlfx.base_rl.agent.callbacks import LoggerType
-    from tengu.drlfx.base_rl.agent.main_runner import run_gym_agent57
+    from tengu.drlfx.agent.callbacks import LoggerType
+    from tengu.drlfx.agent.main_runner import run_gym_agent57
     run_gym_agent57(
         enable_train,
         env,
@@ -45,6 +45,5 @@ def run_agent57(enable_train):
 
 
 if __name__ == '__main__':
-
     # 複数Actorレーニング
     run_agent57(enable_train=True)

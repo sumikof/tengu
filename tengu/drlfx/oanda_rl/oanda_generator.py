@@ -16,6 +16,6 @@ class OandaEnvGenerator:
         self.rate_list = df_org['close'].values.tolist()
 
     def create_env(self):
-        from tengu.drlfx.base_rl.oanda_rl.oanda_environment import OandaEnv
+        from tengu.drlfx.oanda_rl.oanda_environment import OandaEnv
         return OandaEnv(rate_list=self.rate_list,**self.oanda_param)
 

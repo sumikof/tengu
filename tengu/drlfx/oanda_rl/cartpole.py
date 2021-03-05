@@ -1,18 +1,14 @@
 import gym
 from keras.optimizers import Adam
 
-import os
-import sys
+from tengu.drlfx.agent.agent57 import ActorUser
+from tengu.drlfx.agent.policy import EpsilonGreedy
+from tengu.drlfx.agent.model import InputType, LstmType, UvfaType
+from tengu.drlfx.agent.model import ValueModel
+from tengu.drlfx.agent.common import seed_everything
+from tengu.drlfx.agent.callbacks import LoggerType
 
-from tengu.drlfx.base_rl.agent.agent57 import ActorUser
-from tengu.drlfx.base_rl.agent.policy import EpsilonGreedy, AnnealingEpsilonGreedy
-from tengu.drlfx.base_rl.agent.memory import PERRankBaseMemory, PERProportionalMemory
-from tengu.drlfx.base_rl.agent.model import InputType, LstmType, UvfaType
-from tengu.drlfx.base_rl.agent.model import ValueModel, DQNImageModel
-from tengu.drlfx.base_rl.agent.common import seed_everything
-from tengu.drlfx.base_rl.agent.callbacks import LoggerType
-
-from tengu.drlfx.base_rl.agent.main_runner import run_replay, run_gym_agent57
+from tengu.drlfx.agent.main_runner import run_gym_agent57
 
 seed_everything(42)
 ENV_NAME = "CartPole-v0"

@@ -1,5 +1,5 @@
-from tengu.drlfx.base_rl.agent.agent57 import ActorUser
-from tengu.drlfx.base_rl.agent.policy import EpsilonGreedy
+from tengu.drlfx.agent.agent57 import ActorUser
+from tengu.drlfx.agent.policy import EpsilonGreedy
 
 class EnvironmentGenerator:
     def create_env(self):

@@ -30,7 +30,7 @@ def set_optimizer(kwargs):
 
 
 def set_lstm_type(kwargs):
-    from tengu.drlfx.base_rl.agent.model import LstmType
+    from tengu.drlfx.agent.model import LstmType
     if kwargs["lstm_type"] == "STATEFUL":
         kwargs["lstm_type"] = LstmType.STATEFUL
     else:
@@ -39,14 +39,14 @@ def set_lstm_type(kwargs):
 
 def set_input_type(kwargs):
     if kwargs["input_type"] == "Values":
-        from tengu.drlfx.base_rl.agent.model import InputType
+        from tengu.drlfx.agent.model import InputType
         kwargs["input_type"] = InputType.VALUES
     else:
         raise NotImplementedError
 
 def set_input_model(kwargs):
     if kwargs["input_model"]["name"] == "ValueModel":
-        from tengu.drlfx.base_rl.agent.model import ValueModel
+        from tengu.drlfx.agent.model import ValueModel
         kwargs["input_model"] = ValueModel(**kwargs["input_model"]["args"])
     else:
         raise NotImplementedError
@@ -54,7 +54,7 @@ def set_input_model(kwargs):
 
 def set_intrinsic_reward(kwargs):
     def get_intrinsic_reward(name):
-        from tengu.drlfx.base_rl.agent.model import UvfaType
+        from tengu.drlfx.agent.model import UvfaType
         if name == "ACTION":
             return UvfaType.ACTION
         elif name == "REWARD_EXT":
@@ -72,21 +72,18 @@ def set_intrinsic_reward(kwargs):
     convert_uvfa(kwargs, "uvfa_ext")
     convert_uvfa(kwargs, "uvfa_int")
 
-def set_loglevel(kwargs):
-    if kwargs["basic_loglevel"] == "ERROR":
-        from logging import ERROR
-        kwargs["basic_loglevel"] = ERROR
-    elif kwargs["basic_loglevel"] == "WARNING":
-        from logging import WARNING
-        kwargs["basic_loglevel"] = WARNING
-    elif kwargs["basic_loglevel"] == "DEBUG":
-        from logging import DEBUG
-        kwargs["basic_loglevel"] = DEBUG
-    elif kwargs["basic_loglevel"] == "INFO":
-        from logging import INFO
-        kwargs["basic_loglevel"] = INFO
-    else:
+def conv_loglevel(level_str):
+    from logging import ERROR,WARNING,DEBUG,INFO
+    tbl = {
+        "ERROR": ERROR,
+        "WARNING": WARNING,
+        "DEBUG": DEBUG,
+        "INFO": INFO
+    }
+    if level_str not in tbl:
         raise NotImplementedError
+    return tbl[level_str]
+
 
 class TenguParameter:
     config_directory = 'config/'
@@ -135,7 +132,7 @@ class TenguParameter:
         set_input_model(kwargs)
         set_intrinsic_reward(kwargs)
 
-        from tengu.drlfx.base_rl.oanda_rl.oanda_processor import OandaProcessor
+        from tengu.drlfx.oanda_rl.oanda_processor import OandaProcessor
 
         # other
         kwargs["processor"] = OandaProcessor()
@@ -144,7 +141,12 @@ class TenguParameter:
 
     def create_general_parameter(self):
         kwargs = self.read_parameter_file(self.general_parametr_file)
-        set_loglevel(kwargs)
+        kwargs["basic_loglevel"] = conv_loglevel(kwargs["basic_loglevel"])
+        if "module_loglevel" in kwargs:
+            for i in kwargs["module_loglevel"]:
+                i["loglevel"] = conv_loglevel(i["loglevel"])
+        else:
+            kwargs["module_loglevel"] = []
         return kwargs
 
     def update_config(self, config, user_config):

@@ -9,7 +9,7 @@ from tengu.backtest.portfolio import Portfolio, LONG, SHORT
 
 from logging import getLogger
 
-from tengu.drlfx.base_rl.modules.rate_list import RateSeries
+from tengu.drlfx.modules.rate_list import RateSeries
 
 logger = getLogger(__name__)
 

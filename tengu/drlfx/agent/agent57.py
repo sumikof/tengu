@@ -7,12 +7,16 @@ import traceback
 import rl.core
 import tensorflow as tf
 
-from tengu.drlfx.base_rl.agent.env_play import add_memory
-from tengu.drlfx.base_rl.modules.queue_factory import queue_factory
+from tengu.drlfx.agent.env_play import add_memory
+from tengu.drlfx.modules.queue_factory import queue_factory
 from .actor import Actor
 from .learner import Learner
 from .model import DuelingNetwork, LstmType, UvfaType
 from .model import ModelBuilder
+
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 # 複数のプロセスでGPUを使用する設定
 # https://qiita.com/studio_haneya/items/4dfaf2fb2ac44818e7e0
