@@ -1,9 +1,15 @@
 def setup_loglevel(param):
     from logging import basicConfig, getLogger
-    basicConfig(level=param.general_param["basic_loglevel"])
+    logarg = {
+        "level":param.general_param["basic_loglevel"],
+        "format": "%(asctime)s:%(levelname)s:%(module)s:%(message)s"
+    }
+    basicConfig(**logarg)
     for module in param.general_param["module_loglevel"]:
         getLogger(module["module_name"]).setLevel(level=module["loglevel"])
 
+def logformat():
+    pass
 
 def run_agent57(enable_train):
     from tengu.common.parameter import TenguParameter, argument_config
@@ -13,7 +19,7 @@ def run_agent57(enable_train):
     from tengu.drlfx.oanda_rl.oanda_generator import OandaEnvGenerator
     from tengu.drlfx.oanda_rl.oanda_agent import env_manager
     env_manager.set_generator(OandaEnvGenerator(param.general_param))
-    env = env_manager.create_env()
+    env = env_manager.create_env("main")
     setup_loglevel(param)
     # ゲーム情報
     print("action_space      : " + str(env.action_space))

@@ -11,6 +11,10 @@ import pickle
 from .model import LstmType, UvfaType
 from .common import create_beta_list, create_gamma_list_agent57
 from .memory import EpisodeMemory, MemoryFactory
+from logging import getLogger
+
+logger = getLogger(__name__)
+
 
 class Learner():
     def __init__(self,
@@ -198,9 +202,11 @@ class Learner():
                     self.episode_memory.set_memorys(d["episode"])
 
     def train(self):
-
         # RemoteMemory が一定数貯まるまで学習しない。
         if len(self.memory) <= self.memory_warmup_size:
+            logger.info(
+                "Learner not execute train memory size {} <= {}".format(
+                    len(self.memory), self.memory_warmup_size))
             return
         self.train_count += 1
 
@@ -265,6 +271,7 @@ class Learner():
 
         # target networkの更新
         if self.train_count % self.target_model_update_interval == 0:
+            logger.debug()
             self.actval_ext_model_target.set_weights(self.actval_ext_model.get_weights())
             if self.enable_intrinsic_actval_model:
                 self.actval_int_model_target.set_weights(self.actval_int_model.get_weights())
@@ -369,8 +376,8 @@ class Learner():
         if self.enable_intrinsic_reward:
             # emb network
             emb_act_batch = np.asarray(emb_act_batch)
-            state0_batch = np.reshape(state0_batch,(16,4,4)) # reshape入れないと後続でエラー
-            state1_batch = np.reshape(state1_batch,(16,4,4)) # reshape入れないと後続でエラー
+            state0_batch = np.reshape(state0_batch, (16, 4, 4))  # reshape入れないと後続でエラー
+            state1_batch = np.reshape(state1_batch, (16, 4, 4))  # reshape入れないと後続でエラー
             self.emb_train_model.train_on_batch([state0_batch, state1_batch], emb_act_batch)
 
             # rnd network
@@ -441,6 +448,7 @@ class Learner():
 
     # ステートフルLSTMの学習
     def train_model_lstmful(self, indexes, batchs, weights, memory_types):
+        logger.info("Learner Execute train_model_lstmful")
 
         # --- ext
         hidden_s0_ext = []

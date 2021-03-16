@@ -6,21 +6,25 @@ class RateSeries:
         self.test_size = test_size
         self.start_pos = 0
         self.index = 0
-        self.state_size = len(self._state())
+        self.state_size = len(self.state)
         self.reset()
 
     @property
-    def rate(self):
-        return self._state()
+    def state(self):
+        return self.rate_list.iloc[self.start_pos + self.index].tolist()
+
+    @property
+    def current_rate(self):
+        return self.state[0]
 
     def reset(self):
         self.index = 0
         self.start_pos = random.randint(60*24, len(self.rate_list) - self.test_size)
-        return self._is_done(), self.rate
+        return self._is_done(), self.state
 
     def next(self):
         self.index += 1
-        return self._is_done(),self.rate
+        return self._is_done(),self.state
 
     def _make_rate(self,rate_list):
         import pandas as pd
@@ -34,9 +38,6 @@ class RateSeries:
         return rates
     def _is_done(self):
         return self.test_size <= self.index
-
-    def _state(self):
-        return self.rate_list.iloc[self.start_pos + self.index].tolist()
 
     def __str__(self):
         return "RateList {}".format(self.rate_list)

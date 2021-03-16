@@ -2,7 +2,7 @@ from tengu.drlfx.agent.agent57 import ActorUser
 from tengu.drlfx.agent.policy import EpsilonGreedy
 
 class EnvironmentGenerator:
-    def create_env(self):
+    def create_env(self,env_name=""):
         raise NotImplementedError
 
 class EnvironmentManager:
@@ -12,8 +12,8 @@ class EnvironmentManager:
     def set_generator(self,generator):
         self.generator = generator
 
-    def create_env(self):
-        return self.generator.create_env()
+    def create_env(self,env_name=""):
+        return self.generator.create_env(env_name)
 
 
 env_manager = EnvironmentManager()
@@ -28,7 +28,7 @@ class MyActor(ActorUser):
         return EpsilonGreedy(0.1)
 
     def fit(self, index, agent):
-        env = env_manager.create_env()
+        env = env_manager.create_env(index)
         agent.fit(env, visualize=False, verbose=0)
         env.close()
 

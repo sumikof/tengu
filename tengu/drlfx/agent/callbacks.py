@@ -10,6 +10,9 @@ import tempfile
 import glob
 
 from .agent57 import Agent57, DisCallback
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class LoggerType(enum.Enum):
@@ -179,7 +182,7 @@ class DisTrainLogger(DisCallback):
                 name = os.path.join(tmpdir, "tmp")
                 learner.save_weights(name, overwrite=True)
                 test_agent = Agent57.createTestAgentStatic(learner.kwargs, self.test_actor, name)
-            env = self.test_env()
+            env = self.test_env("DisTrainLogger")
             history = test_agent.test(env, nb_episodes=self.test_episodes, visualize=False, verbose=False)
             env.close()
             rewards = np.asarray(history.history["episode_reward"])
@@ -384,3 +387,29 @@ class DisTrainLogger(DisCallback):
             ax1.set_ylabel(name)
 
         plt.show()
+
+
+class DisTrainDebugger(DisCallback):
+    def on_dis_train_begin(self):
+        logger.debug("CallBack DisTrainPrinter on_dis_train_begin")
+
+    def on_dis_train_end(self):
+        logger.debug("CallBack DisTrainPrinter on_dis_train_end")
+
+    def on_dis_learner_begin(self, learner):
+        logger.debug("CallBack DisTrainPrinter on_dis_learner_begin")
+
+    def on_dis_learner_end(self, learner):
+        logger.debug("CallBack DisTrainPrinter on_dis_learner_end")
+
+    def on_dis_learner_train_begin(self, learner):
+        logger.debug("CallBack DisTrainPrinter on_dis_learner_train_begin")
+
+    def on_dis_learner_train_end(self, learner):
+        logger.debug("CallBack DisTrainPrinter on_dis_learner_train_end")
+
+    def on_dis_actor_begin(self, actor_index, runner):
+        logger.debug("CallBack DisTrainPrinter on_dis_actor_begin actor_index={}".format(actor_index))
+
+    def on_dis_actor_end(self, actor_index, runner):
+        logger.debug("CallBack DisTrainPrinter on_dis_actor_end actor_index={}".format(actor_index))

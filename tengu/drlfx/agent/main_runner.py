@@ -2,7 +2,7 @@ import os
 
 from .agent57 import Agent57
 from .callbacks import LoggerType
-from .callbacks import DisTrainLogger, DisSaveManager
+from .callbacks import DisTrainLogger, DisSaveManager, DisTrainDebugger
 
 
 def run_gym_agent57(
@@ -58,10 +58,12 @@ def run_gym_agent57(
             save_memory=False,
             checkpoint=(checkpoint_interval > 0),
             checkpoint_interval=checkpoint_interval,
-            verbose=0
+            verbose=1
         )
-
-        manager.train(nb_trains, nb_time, callbacks=[save_manager, log])
+        debugger = DisTrainDebugger()
+        # callbacks = [save_manager, log, debugger]
+        callbacks = [save_manager, debugger]
+        manager.train(nb_trains, nb_time, callbacks=callbacks)
 
     # 訓練結果を見る
     agent = manager.createTestAgent(kwargs["actors"][0], "tmp_{}/last/learner.dat".format(env_name))

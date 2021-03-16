@@ -1,4 +1,5 @@
 from logging import getLogger
+
 logger = getLogger(__name__)
 
 LONG = 1
@@ -42,11 +43,14 @@ class Position:
         self.rate = trade.rate
         self.amount = trade.amount
 
+    def pl_rate(self, rate):
+        return (rate - self.rate) * self.position_type
+
     def value(self, rate):
-        return (rate - self.rate) * self.position_type * self.amount
+        return self.pl_rate(rate) * self.amount
 
     def __repr__(self):
-        return "(position {},rate {},amount {})".format(self.position_type,self.rate,self.amount)
+        return "(position {},rate {},amount {})".format(self.position_type, self.rate, self.amount)
 
 
 class Portfolio:
@@ -85,7 +89,7 @@ class Portfolio:
         trade = Trade(position_type, OPEN, date, deal_rate, amount)
         self.trading.append(trade)
         self.deals = Position(trade)
-        logger.debug("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate,self.spread,deal_rate))
+        logger.debug("deal rate : {0:.3f} spread : {1:.3f}  position {2:.3f} ".format(rate, self.spread, deal_rate))
 
     def close_deal(self, date, rate, amount):
         """
@@ -102,7 +106,8 @@ class Portfolio:
         self.total_profit += profit
         self.balance += self.current_profit(rate)
         self.deals = None
-        logger.debug("close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate,position_rate,profit))
+        logger.debug(
+            "close deal rate : {0:.3f} position : {0:.3f} profit : {0:.3f} ".format(rate, position_rate, profit))
 
     def position_rate(self):
         return self.deals.rate
@@ -123,6 +128,11 @@ class Portfolio:
             return int(self.deals.value(rate))
         return 0
 
+    def pl_rate(self, rate):
+        if self.has_deals():
+            return self.deals.pl_rate(rate)
+        return 0
+
     def current_balance(self, rate):
         return self.balance + self.current_profit(rate)
 
@@ -133,26 +143,18 @@ class Portfolio:
         trading = {}
         deals = {} 
         """
-        return status.format(self.spread,self.balance,self.trading,self.deals)
+        return status.format(self.spread, self.balance, self.trading, self.deals)
+
 
 if __name__ == '__main__':
-    portfolio = Portfolio(spread=0.018)
+    portfolio = Portfolio(spread=0)
     portfolio.deposit(10000)
 
-    portfolio.deal("2020/04/16", LONG, 110.1, 10000)
-    print(portfolio.current_profit(110.1 + portfolio.spread))
-    portfolio.close_deal("2020/04/16", 110.123, 10000)
-
-    portfolio.deal("2020/04/16", SHORT, 110.123, 10000)
-    print(portfolio.current_profit(110.123 - portfolio.spread))
-    portfolio.close_deal("2020/04/16", 110.456, 10000)
-
-    portfolio.deal("2020/04/16", SHORT, 113.21, 10000)
-    portfolio.close_deal("2020/04/16", 110.9, 10000)
-
-    portfolio.deal("2020/04/16", LONG, 113.5, 10000)
-    portfolio.close_deal("2020/04/16", 110.1, 10000)
-
-    portfolio.deal("2020/04/16", LONG, 113.415, 10000)
-
-    print(portfolio.deals.rate)
+    portfolio.deal("2020/04/16", LONG, 107.720, 8000)
+    profit = portfolio.current_profit(108.432)
+    print(profit)  # 0.007
+    name="hoge"
+    age = 10
+    def logform(**kwargs):
+        return kwargs
+    print(logform(name=name,age=age))

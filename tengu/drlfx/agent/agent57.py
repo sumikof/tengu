@@ -399,8 +399,10 @@ def learner_run(
             # 終了判定
             if nb_trains > 0:
                 if runner.learner.train_count > nb_trains:
+                    logger.info("Leaner train over nb_trains={}".format(nb_trains))
                     break
             if nb_time < time.time() - t0:
+                logger.info("Leaner timeout")
                 break
 
     except KeyboardInterrupt:
@@ -494,9 +496,9 @@ class LearnerRunner():
 
     def train(self):
         _train_count = self.learner.train_count + 1
-
         # 一定毎に Actor に weights を送る
         if _train_count % self.sync_actor_model_interval == 0:
+            logger.debug("LearnerRunner send weight")
             d = {
                 "ext": self.learner.actval_ext_model.get_weights()
             }
@@ -521,6 +523,7 @@ class LearnerRunner():
             self.learner.add_exp(exp)
 
         # train
+        time.sleep(1) # パフォーマンス次第で削除
         self.learner.train()
 
     def save_weights(self, filepath, overwrite=False, save_memory=False):
@@ -539,6 +542,7 @@ class ActorStop(rl.callbacks.Callback):
 
     def on_step_end(self, episode, logs={}):
         if self.is_learner_end.value:
+            print("learner already stoped")
             raise KeyboardInterrupt()
 
 
@@ -715,7 +719,6 @@ class ActorRunner(rl.core.Agent):
         self.actor.load_weights(filepath)
 
     def forward(self, observation):  # override
-
         # フレームスキップ(action_interval毎に行動を選択する)
         action = self.repeated_action
         if self.recent_terminal or (self.local_step % self.step_interval == 0):
@@ -756,6 +759,7 @@ class ActorRunner(rl.core.Agent):
 
         # weightが届いていればmodelを更新
         if not self.weights_q.empty():
+            logger.debug("ActorRunner index:{} weight update".format(self.actor_index))
             d = self.weights_q.get(timeout=1)
             self.actor.actval_ext_model.set_weights(d["ext"])
             if self.enable_intrinsic_actval_model:
@@ -787,7 +791,7 @@ class ActorRunner(rl.core.Agent):
             super().fit(env, nb_steps=nb_steps, callbacks=callbacks, **kwargs)
 
         except Exception:
-            print(traceback.print_exc())
+            logger.error(traceback.print_exc())
 
 
 # distributing callback

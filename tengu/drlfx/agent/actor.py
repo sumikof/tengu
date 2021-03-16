@@ -8,44 +8,47 @@ import pickle
 
 from .common import create_beta_list, create_gamma_list_agent57, rescaling_inverse, rescaling
 from .model import LstmType, UvfaType
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class Actor():
     def __init__(self,
-            input_shape,
-            input_sequence,
-            nb_actions,
-            action_policy,
-            batch_size,
-            lstm_type,
-            reward_multisteps,
-            lstmful_input_length,
-            burnin_length,
-            enable_intrinsic_actval_model,
-            enable_rescaling,
-            priority_exponent,
-            int_episode_reward_k,
-            int_episode_reward_epsilon,
-            int_episode_reward_c,
-            int_episode_reward_max_similarity,
-            int_episode_reward_cluster_distance,
-            int_episodic_memory_capacity,
-            rnd_err_capacity,
-            rnd_max_reward,
-            policy_num,
-            test_policy,
-            beta_max,
-            gamma0,
-            gamma1,
-            gamma2,
-            ucb_epsilon,
-            ucb_beta,
-            ucb_window_size,
-            model_builder,
-            uvfa_ext,
-            uvfa_int,
-            actor_index,
-        ):
+                 input_shape,
+                 input_sequence,
+                 nb_actions,
+                 action_policy,
+                 batch_size,
+                 lstm_type,
+                 reward_multisteps,
+                 lstmful_input_length,
+                 burnin_length,
+                 enable_intrinsic_actval_model,
+                 enable_rescaling,
+                 priority_exponent,
+                 int_episode_reward_k,
+                 int_episode_reward_epsilon,
+                 int_episode_reward_c,
+                 int_episode_reward_max_similarity,
+                 int_episode_reward_cluster_distance,
+                 int_episodic_memory_capacity,
+                 rnd_err_capacity,
+                 rnd_max_reward,
+                 policy_num,
+                 test_policy,
+                 beta_max,
+                 gamma0,
+                 gamma1,
+                 gamma2,
+                 ucb_epsilon,
+                 ucb_beta,
+                 ucb_window_size,
+                 model_builder,
+                 uvfa_ext,
+                 uvfa_int,
+                 actor_index,
+                 ):
         self.training = False
         self.test_policy = test_policy
 
@@ -76,14 +79,14 @@ class Actor():
         self.model_builder = model_builder
         self.uvfa_ext = uvfa_ext
         self.uvfa_int = uvfa_int
-        
+
         self.enable_intrinsic_actval_model = enable_intrinsic_actval_model
         if self.enable_intrinsic_actval_model or (UvfaType.REWARD_INT in self.uvfa_ext):
             self.enable_intrinsic_reward = True
         else:
             self.enable_intrinsic_reward = False
 
-        #--- check
+        # --- check
         if lstm_type == LstmType.STATEFUL:
             self.burnin_length = burnin_length
         else:
@@ -105,12 +108,13 @@ class Actor():
 
         self.actor_index = actor_index
 
-
     def build_model(self, learner):
+        logger.debug("Actor {} build model".format(self.actor_index))
         if learner is None:
+            logger.debug("Actor {} build model learner None".format(self.actor_index))
             self.actval_ext_model = self.model_builder.build_actval_func_model(None, uvfa=self.uvfa_ext)
             if self.enable_intrinsic_actval_model:
-                self.actval_int_model =  self.model_builder.build_actval_func_model(None, uvfa=self.uvfa_int)
+                self.actval_int_model = self.model_builder.build_actval_func_model(None, uvfa=self.uvfa_int)
             if self.enable_intrinsic_reward:
                 self.emb_model = self.model_builder.build_embedding_model()
                 self.rnd_target_model = self.model_builder.build_rnd_model(None)
@@ -145,7 +149,6 @@ class Actor():
         with open(filepath, 'wb') as f:
             pickle.dump(d, f)
 
-
     def load_weights(self, filepath):
         if not os.path.isfile(filepath):
             return
@@ -159,64 +162,65 @@ class Actor():
             self.rnd_target_model.set_weights(d["weights_rnd_target"])
             self.emb_model.set_weights(d["weights_emb"])
 
-
     def episode_begin(self):
+        logger.debug("Actor {} Episode Begin".format(self.actor_index))
+
         self.recent_terminal = False
         self.total_reward = 0
         self.backward_run = False
 
         if self.lstm_type != LstmType.STATEFUL:
-            self.recent_actions = [ 0 for _ in range(self.reward_multisteps*2)]
-            self.recent_rewards = [ 0 for _ in range(self.reward_multisteps)]
-            self.recent_rewards_multistep = [ 0 for _ in range(self.reward_multisteps+1)]
+            self.recent_actions = [0 for _ in range(self.reward_multisteps * 2)]
+            self.recent_rewards = [0 for _ in range(self.reward_multisteps)]
+            self.recent_rewards_multistep = [0 for _ in range(self.reward_multisteps + 1)]
             self.recent_observations = [
                 np.zeros(self.input_shape) for _ in range(self.input_sequence + self.reward_multisteps)
             ]
             if self.enable_intrinsic_reward:
-                self.recent_reward_intrinsic = [ 0 for _ in range(self.reward_multisteps)]
-                self.recent_reward_intrinsic_multistep = [ 0 for _ in range(self.reward_multisteps+1)]
+                self.recent_reward_intrinsic = [0 for _ in range(self.reward_multisteps)]
+                self.recent_reward_intrinsic_multistep = [0 for _ in range(self.reward_multisteps + 1)]
             else:
-                self.recent_reward_intrinsic_multistep = [ 0 for _ in range(self.reward_multisteps+1)]
+                self.recent_reward_intrinsic_multistep = [0 for _ in range(self.reward_multisteps + 1)]
 
         else:
             obsnum = self.lstmful_input_length + self.burnin_length
-            actlen = self.reward_multisteps*2 + obsnum - 1
+            actlen = self.reward_multisteps * 2 + obsnum - 1
             rwdlen = self.reward_multisteps
             rwdmultilen = self.reward_multisteps + obsnum
             obslen = self.input_sequence
             obswraplen = self.reward_multisteps + obsnum
 
-            self.recent_actions = [ 0 for _ in range(actlen)]
-            self.recent_rewards = [ 0 for _ in range(rwdlen)]
-            self.recent_rewards_multistep = [ 0 for _ in range(rwdmultilen)]
-            self.recent_observations = [ np.zeros(self.input_shape) for _ in range(obslen)]
-            self.recent_observations_wrap = [ [np.zeros(self.input_shape) for _ in range(self.input_sequence)] for _ in range(obswraplen)]
+            self.recent_actions = [0 for _ in range(actlen)]
+            self.recent_rewards = [0 for _ in range(rwdlen)]
+            self.recent_rewards_multistep = [0 for _ in range(rwdmultilen)]
+            self.recent_observations = [np.zeros(self.input_shape) for _ in range(obslen)]
+            self.recent_observations_wrap = [[np.zeros(self.input_shape) for _ in range(self.input_sequence)] for _ in
+                                             range(obswraplen)]
 
             intlen = self.reward_multisteps
             intmultilen = self.reward_multisteps + obsnum
             if self.enable_intrinsic_reward:
-                self.recent_reward_intrinsic = [ 0 for _ in range(intlen)]
-                self.recent_reward_intrinsic_multistep = [ 0 for _ in range(intmultilen)]
+                self.recent_reward_intrinsic = [0 for _ in range(intlen)]
+                self.recent_reward_intrinsic_multistep = [0 for _ in range(intmultilen)]
             else:
-                self.recent_reward_intrinsic_multistep = [ 0 for _ in range(intmultilen)]
+                self.recent_reward_intrinsic_multistep = [0 for _ in range(intmultilen)]
 
             # hidden_state: [(batch_size, lstm_units_num), (batch_size, lstm_units_num)]
             hidlen = self.reward_multisteps + obsnum
             self.actval_ext_model.reset_states()
             hidden_zero = [K.get_value(self.lstm.states[0]), K.get_value(self.lstm.states[1])]
-            self.recent_hidden_states = [ hidden_zero for _ in range(hidlen)]
+            self.recent_hidden_states = [hidden_zero for _ in range(hidlen)]
 
             if self.enable_intrinsic_actval_model:
                 self.actval_int_model.reset_states()
                 hidden_zero = [K.get_value(self.lstm_int.states[0]), K.get_value(self.lstm_int.states[1])]
-                self.recent_hidden_states_int = [ hidden_zero for _ in range(hidlen)]
+                self.recent_hidden_states_int = [hidden_zero for _ in range(hidlen)]
             else:
                 self.recent_hidden_states_int = [0]
 
-
         if self.enable_intrinsic_reward:
             self.int_episodic_memory = []
-            
+
         if not self.training:
             self.policy_index = self.test_policy
         elif self.policy_num == 1:
@@ -230,7 +234,7 @@ class Actor():
                 ])
                 if len(self.ucb_data) >= self.ucb_window_size:
                     self.ucb_data.pop(0)
-        
+
             if self.episode_count < self.policy_num:
                 # 全て１回は実行
                 self.policy_index = self.episode_count
@@ -238,13 +242,15 @@ class Actor():
                 r = random.random()
                 if r < self.ucb_epsilon:
                     # ランダムでpolicyを決定
-                    self.policy_index = random.randint(0, self.policy_num-1)  # a <= n <= b
+                    self.policy_index = random.randint(0, self.policy_num - 1)  # a <= n <= b
                 else:
                     # UCB
                     self.policy_index = self._get_ucb_policy()
-                
+
             self.episode_count += 1
         self.gamma = self.gamma_list[self.policy_index]
+        logger.debug("Actor {} Episode Finished".format(self.actor_index))
+
 
     def _get_ucb_policy(self):
         N = [1 for _ in range(self.policy_num)]
@@ -255,23 +261,24 @@ class Actor():
 
         for i in range(self.policy_num):
             u[i] /= N[i]
-        
+
         count = len(self.ucb_data)
         k = [0 for _ in range(self.policy_num)]
         for i in range(self.policy_num):
-            k[i] = u[i] + self.ucb_beta * np.sqrt(np.log(count)/N[i])
+            k[i] = u[i] + self.ucb_beta * np.sqrt(np.log(count) / N[i])
 
         return np.argmax(k)
 
-
     def forward_train_before(self, observation):
+        logger.debug("Actor {} forward_train_before".format(self.actor_index))
+
         # observation
         self.recent_observations.pop(0)
         self.recent_observations.append(observation)
         if self.lstm_type == LstmType.STATEFUL:
             self.recent_observations_wrap.pop(0)
             self.recent_observations_wrap.append(self.recent_observations[-self.input_sequence:])
-    
+
         # tmp
         self._qvals = None
         self._state_x = np.asarray(self.recent_observations[-self.input_sequence:])
@@ -279,10 +286,10 @@ class Actor():
         self._state_x_int = None
         if self.lstm_type != LstmType.STATEFUL:
             # (1, input_shape)
-            self._state_x = self._state_x[np.newaxis,:]
+            self._state_x = self._state_x[np.newaxis, :]
         else:
             # (batch_size, input_shape)
-            self._state_x = np.full((self.batch_size,)+self._state_x.shape, self._state_x)
+            self._state_x = np.full((self.batch_size,) + self._state_x.shape, self._state_x)
 
         self._state_x_ext = self._create_uvfa_input(self._state_x, self.uvfa_ext)
         if self.enable_intrinsic_actval_model:
@@ -294,7 +301,8 @@ class Actor():
         else:
             t = np.empty(0)
             if UvfaType.ACTION in uvfa_types:
-                t = np.append(t, to_categorical(self.recent_actions[self.reward_multisteps], num_classes=self.nb_actions))
+                t = np.append(t,
+                              to_categorical(self.recent_actions[self.reward_multisteps], num_classes=self.nb_actions))
             if UvfaType.REWARD_EXT in uvfa_types:
                 t = np.append(t, self.recent_rewards_multistep[self.reward_multisteps])
             if UvfaType.REWARD_INT in uvfa_types:
@@ -304,19 +312,18 @@ class Actor():
 
             if self.lstm_type == LstmType.NONE:
                 # (1, uvfa_input)
-                t = t[np.newaxis,:]
+                t = t[np.newaxis, :]
             elif self.lstm_type == LstmType.STATELESS:
                 # (1, input_sequence, uvfa_input)
-                t = np.full((self.input_sequence,) + t.shape ,t)[np.newaxis,:]
+                t = np.full((self.input_sequence,) + t.shape, t)[np.newaxis, :]
             else:
                 # (batch_size, input_sequence, policy_num)
-                t = np.full((self.input_sequence,) + t.shape ,t)
+                t = np.full((self.input_sequence,) + t.shape, t)
                 t = np.full((self.batch_size,) + t.shape, t)
             return [state, t]
 
-
     def forward_train_after(self):
-
+        logger.debug("Actor {} forward_train_after".format(self.actor_index))
         # hidden_state update
         if self.lstm_type == LstmType.STATEFUL:
             # hidden_state を更新しつつQ値も取得
@@ -343,18 +350,19 @@ class Actor():
             elif self.enable_rescaling:
                 for i in range(self.nb_actions):
                     self._qvals[i] = rescaling(rescaling_inverse(self._qvals[i]))
-        
 
-        
-        
         if self.recent_terminal:
+            logger.debug("Actor {} recent terminal end action = 0".format(self.actor_index))
             return 0  # 終了時はactionを出す必要がない
 
         if self.training:
             action = self.action_policy.select_action(self)
+            logger.debug("Actor {} training action = {}".format(self.actor_index,action))
         else:
             # テスト中はQ値最大
-            return np.argmax(self.get_qvals())
+            action = np.argmax(self.get_qvals())
+            logger.debug("Actor {} not training action = {}".format(self.actor_index, action))
+            return action
 
         # アクション保存
         self.recent_actions.pop(0)
@@ -362,14 +370,13 @@ class Actor():
 
         return action
 
-
     def get_qvals(self):
         if self._qvals is not None:
             # STATEFUL は hidden_state 計算時に計算済み
             return self._qvals
 
         self._qvals = self.actval_ext_model.predict(self._state_x_ext, batch_size=1)[0]
-        
+
         if self.enable_intrinsic_actval_model:
             q_int_list = self.actval_int_model.predict(self._state_x_int, batch_size=1)[0]
             beta = self.int_beta_list[self.policy_index]
@@ -378,15 +385,16 @@ class Actor():
                 q_ext = rescaling_inverse(self._qvals[i])
                 q_int = rescaling_inverse(q_int_list[i])
                 self._qvals[i] = rescaling(q_ext + beta * q_int)
-            
+
         elif self.enable_rescaling:
             for i in range(self.nb_actions):
                 self._qvals[i] = rescaling(rescaling_inverse(self._qvals[i]))
-        
+
         return self._qvals
 
-
     def backward(self, reward, terminal):
+        # logger.debug("Actor {} backward".format(self.actor_index))
+
         # terminal は env が終了状態ならTrue
         self.step += 1
 
@@ -402,7 +410,7 @@ class Actor():
         # multi step learning
         self.recent_rewards_multistep.pop(0)
         self.recent_rewards_multistep.append(self.calc_multistep_reward())
-        
+
         # 内部報酬を計算
         if self.enable_intrinsic_reward:
             self.int_episode_reward = self.calc_int_episode_reward()
@@ -413,22 +421,20 @@ class Actor():
             self.recent_reward_intrinsic.append(_tmp)
 
             # multi step learning, 内部報酬は multistep すると学習しない？
-            #_tmp = 0
-            #for i in range(-self.reward_multisteps, 0):
+            # _tmp = 0
+            # for i in range(-self.reward_multisteps, 0):
             #    _tmp += self.recent_reward_intrinsic[i] * (self.gamma ** (self.reward_multisteps+i+1))
             self.recent_reward_intrinsic_multistep.pop(0)
             self.recent_reward_intrinsic_multistep.append(_tmp)
 
-        
         return []
-
 
     def add_episode_end_frame(self):
         # 最終フレーム後に1フレーム追加
         self.recent_observations.pop(0)
         self.recent_observations.append(np.zeros(self.input_shape))
-        #self.recent_actions.pop(0)
-        #self.recent_actions.append(0)
+        # self.recent_actions.pop(0)
+        # self.recent_actions.append(0)
         self.recent_rewards.pop(0)
         self.recent_rewards.append(0)
         self.recent_rewards_multistep.pop(0)
@@ -445,7 +451,8 @@ class Actor():
             if self.enable_intrinsic_actval_model:
                 self.actval_int_model.reset_states()
                 self.recent_hidden_states_int.pop(0)
-                self.recent_hidden_states_int.append([K.get_value(self.lstm_int.states[0]), K.get_value(self.lstm_int.states[1])])
+                self.recent_hidden_states_int.append(
+                    [K.get_value(self.lstm_int.states[0]), K.get_value(self.lstm_int.states[1])])
 
     def create_exp(self, calc_priority, update_terminal=None):
         if not self.training:
@@ -458,8 +465,8 @@ class Actor():
         else:
             # priority の計算
             if self.lstm_type != LstmType.STATEFUL:
-                state0 = self.recent_observations[-self.input_sequence-self.reward_multisteps:-self.reward_multisteps]
-                state0 = np.asarray(state0)[np.newaxis,:]
+                state0 = self.recent_observations[-self.input_sequence - self.reward_multisteps:-self.reward_multisteps]
+                state0 = np.asarray(state0)[np.newaxis, :]
                 state1 = self._state_x
                 action1 = self.recent_actions[self.reward_multisteps]
                 reward1 = self.recent_rewards_multistep[self.reward_multisteps]
@@ -482,15 +489,15 @@ class Actor():
                         policy = to_categorical(self.policy_index, num_classes=self.policy_num)
                         ext0 = np.append(ext0, policy)
                         ext1 = np.append(ext1, policy)
-                    
+
                     if self.lstm_type != LstmType.NONE:
                         # (input_sequence, uvfa_input)
                         ext0 = np.full((self.input_sequence,) + ext0.shape, ext0)
                         ext1 = np.full((self.input_sequence,) + ext1.shape, ext1)
-                    
-                    state0 = [state0, ext0[np.newaxis,:]]
-                    state1 = [state1, ext1[np.newaxis,:]]
-                
+
+                    state0 = [state0, ext0[np.newaxis, :]]
+                    state1 = [state1, ext1[np.newaxis, :]]
+
                 state0_qvals = self.actval_ext_model.predict(state0, 1)[0]
                 state1_qvals = self.actval_ext_model.predict(state1, 1)[0]
                 maxq = np.max(state1_qvals)
@@ -504,33 +511,35 @@ class Actor():
                 if UvfaType.POLICY in self.uvfa_ext:
                     policy = to_categorical(self.policy_index, num_classes=self.policy_num)
                 for i in range(self.lstmful_input_length):
-                    state0 = np.asarray(self.recent_observations_wrap[-1-i-self.reward_multisteps])
-                    state0 = np.full((self.batch_size,)+state0.shape, state0)
-                    state1 = np.asarray(self.recent_observations_wrap[-1-i])
-                    state1 = np.full((self.batch_size,)+state1.shape, state1)
-                    hidden_states0 = self.recent_hidden_states[-1-i-self.reward_multisteps]
-                    hidden_states1 = self.recent_hidden_states[-1-i]
-                    action1 = self.recent_actions[-1-i-self.reward_multisteps+1]
-                    reward1 = self.recent_rewards_multistep[-1-i]
+                    state0 = np.asarray(self.recent_observations_wrap[-1 - i - self.reward_multisteps])
+                    state0 = np.full((self.batch_size,) + state0.shape, state0)
+                    state1 = np.asarray(self.recent_observations_wrap[-1 - i])
+                    state1 = np.full((self.batch_size,) + state1.shape, state1)
+                    hidden_states0 = self.recent_hidden_states[-1 - i - self.reward_multisteps]
+                    hidden_states1 = self.recent_hidden_states[-1 - i]
+                    action1 = self.recent_actions[-1 - i - self.reward_multisteps + 1]
+                    reward1 = self.recent_rewards_multistep[-1 - i]
 
                     if len(self.uvfa_ext) > 0:
                         ext0 = np.empty(0)
                         ext1 = np.empty(0)
                         if UvfaType.ACTION in self.uvfa_ext:
-                            act0 = to_categorical(self.recent_actions[-1-i-self.reward_multisteps*2+1], num_classes=self.nb_actions)
+                            act0 = to_categorical(self.recent_actions[-1 - i - self.reward_multisteps * 2 + 1],
+                                                  num_classes=self.nb_actions)
                             act1 = to_categorical(action1, num_classes=self.nb_actions)
                             ext0 = np.append(ext0, act0)
                             ext1 = np.append(ext1, act1)
                         if UvfaType.REWARD_EXT in self.uvfa_ext:
-                            ext0 = np.append(ext0, self.recent_rewards_multistep[-1-i-self.reward_multisteps])
+                            ext0 = np.append(ext0, self.recent_rewards_multistep[-1 - i - self.reward_multisteps])
                             ext1 = np.append(ext1, reward1)
                         if UvfaType.REWARD_INT in self.uvfa_ext:
-                            ext0 = np.append(ext0, self.recent_reward_intrinsic_multistep[-1-i-self.reward_multisteps])
-                            ext1 = np.append(ext1, self.recent_reward_intrinsic_multistep[-1-i])
+                            ext0 = np.append(ext0,
+                                             self.recent_reward_intrinsic_multistep[-1 - i - self.reward_multisteps])
+                            ext1 = np.append(ext1, self.recent_reward_intrinsic_multistep[-1 - i])
                         if UvfaType.POLICY in self.uvfa_ext:
                             ext0 = np.append(ext0, policy)
                             ext1 = np.append(ext1, policy)
-                        
+
                         # (batch_size, input_sequence, uvfa_input)
                         ext0 = np.full((self.input_sequence,) + ext0.shape, ext0)
                         ext1 = np.full((self.input_sequence,) + ext1.shape, ext1)
@@ -549,9 +558,10 @@ class Actor():
                     td_error = reward1 + (self.gamma ** self.reward_multisteps) * maxq
                     priority = abs(td_error - state0_qvals[action1])
                     prioritys.append(priority)
-                
+
                 # 今回使用したsamplingのpriorityを更新
-                priority = self.priority_exponent * np.max(prioritys) + (1-self.priority_exponent) * np.average(prioritys)
+                priority = self.priority_exponent * np.max(prioritys) + (1 - self.priority_exponent) * np.average(
+                    prioritys)
 
         if update_terminal is None:
             terminal = self.recent_terminal
@@ -563,10 +573,11 @@ class Actor():
                 self.recent_observations[:],
                 [self.recent_actions[0], self.recent_actions[self.reward_multisteps]],
                 [self.recent_rewards_multistep[0], self.recent_rewards_multistep[self.reward_multisteps]],
-                self.recent_rewards[self.reward_multisteps-1],
+                self.recent_rewards[self.reward_multisteps - 1],
                 terminal,
                 priority,
-                [self.recent_reward_intrinsic_multistep[0], self.recent_reward_intrinsic_multistep[self.reward_multisteps]],
+                [self.recent_reward_intrinsic_multistep[0],
+                 self.recent_reward_intrinsic_multistep[self.reward_multisteps]],
                 self.policy_index,
                 self.actor_index,
             )
@@ -586,22 +597,22 @@ class Actor():
             )
         return exp
 
-
     def calc_multistep_reward(self):
+        # logger.debug("Actor {} calc_multistep_reward".format(self.actor_index))
         _tmp = 0
         for i in range(-self.reward_multisteps, 0):
-            _tmp += self.recent_rewards[i] * (self.gamma ** (self.reward_multisteps+i))
+            _tmp += self.recent_rewards[i] * (self.gamma ** (self.reward_multisteps + i))
         return _tmp
-    
 
     def calc_int_episode_reward(self):
+        # logger.debug("Actor {} calc_int_episode_reward".format(self.actor_index))
         cont_state = self.emb_model.predict(self._state_x, batch_size=1)[0]
 
         if len(self.int_episodic_memory) == 0:
             episode_reward = 1
         else:
             # 全要素とのユークリッド距離を求める
-            euclidean_list = [ np.linalg.norm(x - cont_state) for x in self.int_episodic_memory]
+            euclidean_list = [np.linalg.norm(x - cont_state) for x in self.int_episodic_memory]
 
             # 上位k個が対象
             euclidean_list.sort()
@@ -620,13 +631,13 @@ class Actor():
                 d -= self.int_episode_reward_cluster_distance
                 if d < euclidean_list[0]:
                     d = euclidean_list[0]
-                count +=  self.int_episode_reward_epsilon / (d + self.int_episode_reward_epsilon)
+                count += self.int_episode_reward_epsilon / (d + self.int_episode_reward_epsilon)
             s = np.sqrt(count) + self.int_episode_reward_c
 
             if s > self.int_episode_reward_max_similarity:
                 episode_reward = 0
             else:
-                episode_reward = 1/s
+                episode_reward = 1 / s
 
         # エピソードメモリに追加
         self.int_episodic_memory.append(cont_state)
@@ -635,8 +646,8 @@ class Actor():
 
         return episode_reward
 
-    
     def calc_int_lifelong_reward(self):
+        # logger.debug("Actor {} calc_int_lifelong_reward".format(self.actor_index))
         # RND取得
         rnd_target_val = self.rnd_target_model.predict(self._state_x, batch_size=1)[0]
         rnd_train_val = self.rnd_train_model.predict(self._state_x, batch_size=1)[0]
@@ -656,7 +667,7 @@ class Actor():
         ave = np.average(self.rnd_err_vals)
 
         # life long reward
-        lifelong_reward = 1 + (mse - ave)/sd
+        lifelong_reward = 1 + (mse - ave) / sd
 
         if lifelong_reward < 1:
             lifelong_reward = 1
@@ -664,4 +675,3 @@ class Actor():
             lifelong_reward = self.rnd_max_reward
 
         return lifelong_reward
-
