@@ -96,7 +96,7 @@ class Learner():
             self.emb_model = model_builder.build_embedding_model()
             self.emb_train_model = model_builder.build_embedding_model_train(optimizer_emb)
             self.model_builder.sync_embedding_model(self.emb_train_model, self.emb_model)
-
+        print(self.actval_ext_model.summary())
         if lstm_type == LstmType.STATEFUL:
             self.lstm = self.actval_ext_model.get_layer("lstm")
             self.target_lstm = self.actval_ext_model_target.get_layer("lstm")

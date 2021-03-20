@@ -1,15 +1,21 @@
 def setup_loglevel(param):
     from logging import basicConfig, getLogger
     logarg = {
-        "level":param.general_param["basic_loglevel"],
+        "level": param.general_param["basic_loglevel"],
         "format": "%(asctime)s:%(levelname)s:%(module)s:%(message)s"
     }
+    print(logarg)
     basicConfig(**logarg)
     for module in param.general_param["module_loglevel"]:
+        print("set_loglevel module={} ,loglevel={}".format(module["module_name"], module["loglevel"]))
         getLogger(module["module_name"]).setLevel(level=module["loglevel"])
+    import tensorflow as tf
+    tf.get_logger().setLevel('WARNING')
+
 
 def logformat():
     pass
+
 
 def run_agent57(enable_train):
     from tengu.common.parameter import TenguParameter, argument_config

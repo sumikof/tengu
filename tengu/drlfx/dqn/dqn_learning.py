@@ -13,7 +13,7 @@ if __name__ == '__main__':
     from logging import WARNING, DEBUG, basicConfig
 
     logarg = {
-        "level": DEBUG,
+        "level": WARNING,
         "format": "%(asctime)s:%(levelname)s:%(module)s:%(message)s"
     }
     basicConfig(**logarg)
@@ -59,6 +59,6 @@ if __name__ == '__main__':
                    target_model_update=1e-2, policy=policy)
     dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
-    history = dqn.fit(env, nb_steps=50000, visualize=True, verbose=2)  # 学習。ここでnb_stepsは全エピソードのステップ数の合計が50000（だと思う）
+    history = dqn.fit(env, nb_steps=50000, visualize=False, verbose=2)  # 学習。ここでnb_stepsは全エピソードのステップ数の合計が50000（だと思う）
 
     dqn.test(env, nb_episodes=5, visualize=True)

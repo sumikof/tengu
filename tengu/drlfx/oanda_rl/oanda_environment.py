@@ -59,8 +59,11 @@ class OandaEnv(gym.Env):
                                ))
         try:
             if action == 0:
-                if not self.portfolio.has_deals():
+                if self.portfolio.has_deals():
+                    reward = 0.0001
+                else:
                     reward = -0.0001
+
             elif action == 1:  # deal
                 done = self.open_position(self.rate_llist.index, LONG)
             elif action == 2:  # deal
@@ -74,7 +77,7 @@ class OandaEnv(gym.Env):
                 err_msg = str(e)
                 err_flag = True
                 done = True
-                reward = -1
+                reward = -100
 
         # 次の時間に進む
         if not err_flag and not done:
@@ -107,7 +110,7 @@ class OandaEnv(gym.Env):
                 reward = reward + self.close_position(self.rate_llist.index)
 
             self.total_reward += reward
-            logger.info(logformat(action="finish trading", envname=self.env_name, step=self.rate_llist.index,
+            print(logformat(action="finish trading", envname=self.env_name, step=self.rate_llist.index,
                                   trading_num=len(self.portfolio.trading), total_reward=self.total_reward,
                                   last_balance=self.portfolio.balance
                                   ))
@@ -214,7 +217,7 @@ class OandaEnv(gym.Env):
         # ポジションを決済
         position_rate = self.portfolio.deals.rate
         current_rate = self.rate_llist.current_rate
-        profit = self.portfolio.pl_rate(current_rate)
+        profit = self.portfolio.current_profit(current_rate)
 
         self.portfolio.close_deal(step_num, current_rate, self.portfolio.deals.amount)
         logger.debug(logformat(action="close deal",

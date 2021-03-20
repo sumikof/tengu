@@ -35,7 +35,7 @@ batch_size: 16
 input_sequence: 4
 dense_units_num: 32
 enable_dueling_network: true
-lstm_type: STATEFUL # 使用するLSTMアルゴリズム
+lstm_type: STATEFUL
 lstm_units_num: 32
 lstmful_input_length: 1
 
@@ -84,6 +84,6 @@ uvfa_int:
 # other
 processor: OandaProcessor
 step_interval: 1
-sync_actor_model_interval: 50 # learner から model を同期する間隔
+sync_actor_model_interval: 50 # learner <> model sync time
 enable_add_episode_end_frame: true
 

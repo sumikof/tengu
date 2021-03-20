@@ -283,6 +283,8 @@ class Agent57():
                 learner_args = (learner_allocate,) + learner_args
                 self.learner_ps = mp.Process(target=learner_run_allocate, args=learner_args)
             else:
+                import pickle
+                # pickle.dump(learner_run,file="learner.dmp")
                 self.learner_ps = mp.Process(target=learner_run, args=learner_args)
             self.learner_ps.start()
 
@@ -762,7 +764,7 @@ class ActorRunner(rl.core.Agent):
 
         # weightが届いていればmodelを更新
         if not self.weights_q.empty():
-            logger.debug("ActorRunner index:{} weight update".format(self.actor_index))
+            print("ActorRunner index:{} weight update".format(self.actor_index))
             d = self.weights_q.get(timeout=1)
             self.actor.actval_ext_model.set_weights(d["ext"])
             if self.enable_intrinsic_actval_model:
