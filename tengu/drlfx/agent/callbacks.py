@@ -1,5 +1,4 @@
 import keras
-import matplotlib.pyplot as plt
 import numpy as np
 
 import os
@@ -351,42 +350,6 @@ class DisTrainLogger(DisCallback):
             n = actors + 1
 
         # learner
-        fig = plt.figure()
-        ax1 = fig.add_subplot(n, 1, 1)
-        ax2 = ax1.twinx()
-        ax2.plot(learner_logs["x"], learner_logs["ax2_y"], color="black", linestyle="dashed")
-        ax1.plot(learner_logs["x"], learner_logs["y1"], marker="o", label="min")
-        ax1.plot(learner_logs["x"], learner_logs["y2"], marker="o", label="ave")
-        ax1.plot(learner_logs["x"], learner_logs["y3"], marker="o", label="max")
-        # if x_max > 0:
-        #    ax1.set_xlim([0, x_max])
-        ax1.grid(True)
-        ax1.legend()
-        if base == "time":
-            ax1.set_title("Time(m)")
-            ax2.set_ylabel("TrainCount")
-        else:
-            ax1.set_title("TrainCount")
-            ax2.set_ylabel("Time(m)")
-        ax1.set_ylabel("Learner")
-
-        # actors
-        for i in range(n - 1):
-            name = "actor{}".format(i)
-            v = actors_logs[name]
-
-            ax1 = fig.add_subplot(n, 1, 2 + i)
-            ax2 = ax1.twinx()
-            ax2.plot(v["x"], v["ax2_y"], color="black", linestyle="dashed")
-            ax1.plot(v["x"], v["y1"], marker="o", label="min")
-            ax1.plot(v["x"], v["y2"], marker="o", label="ave")
-            ax1.plot(v["x"], v["y3"], marker="o", label="max")
-            # if x_max > 0:
-            #    ax1.set_xlim([0, x_max])
-            ax1.grid(True)
-            ax1.set_ylabel(name)
-
-        plt.show()
 
 
 class DisTrainDebugger(DisCallback):

@@ -12,9 +12,10 @@ def osx_queue(ctx):
 def queue_factory(ctx):
     import platform
     pf = platform.system()
+
     if pf == 'Darwin':
-        logger.debug("{} Darwin Mode MultiQueue".format(sys._getframe().f_code.co_name))
-        return osx_queue(ctx)
+        import multiprocessing as mp
+        return mp.Queue()
     else:
         import multiprocessing as mp
         return mp.Queue()

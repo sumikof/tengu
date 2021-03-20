@@ -43,6 +43,7 @@ class Agent57():
                  memory,
                  memory_kwargs,
                  actors,
+                 actor_args,
 
                  # input_model
                  input_model=None,
@@ -203,6 +204,7 @@ class Agent57():
 
         self.learner_ps = None
         self.actors_ps = []
+        self.actor_args = actor_args
 
     def __del__(self):
         if self.learner_ps is not None:
@@ -296,6 +298,7 @@ class Agent57():
                     self.is_learner_end,
                     self.train_count,
                     self.is_actor_ends[i],
+                    self.actor_args
                 )
                 if self.enable_GPU:
                     actor = self.kwargs["actors"][i]
@@ -345,13 +348,13 @@ class Agent57():
             time.sleep(1)
 
     def createTestAgent(self, test_actor, learner_model_path):
-        return Agent57.createTestAgentStatic(self.kwargs, test_actor, learner_model_path)
+        return Agent57.createTestAgentStatic(self.kwargs, test_actor, learner_model_path, self.actor_args)
 
     @staticmethod
-    def createTestAgentStatic(manager_kwargs, test_actor, learner_model_path):
+    def createTestAgentStatic(manager_kwargs, test_actor, learner_model_path, actor_args):
         if not os.path.isfile(learner_model_path):
             return None
-        test_actor = ActorRunner(0, manager_kwargs, test_actor(), None, None, None, None, is_test=True)
+        test_actor = ActorRunner(0, manager_kwargs, test_actor(actor_args), None, None, None, None, is_test=True)
         test_actor.load_weights(learner_model_path)
         return test_actor
 
@@ -517,13 +520,12 @@ class LearnerRunner():
                 # 送る
                 q.put(d)
 
-        # experience があれば RemoteMemory に追加
-        for _ in range(self.exp_q.qsize()):
+        # experience があれば RemoteMemory に追加 ## qsize()をemptyを使用するように修正
+        while not self.exp_q.empty():
             exp = self.exp_q.get(timeout=1)
             self.learner.add_exp(exp)
-
         # train
-        time.sleep(1) # パフォーマンス次第で削除
+        time.sleep(1)  # パフォーマンス次第で削除
         self.learner.train()
 
     def save_weights(self, filepath, overwrite=False, save_memory=False):
@@ -571,11 +573,12 @@ def actor_run(
         is_learner_end,
         train_count,
         is_actor_end,
+        actor_args
 ):
     verbose = kwargs["verbose"]
     callbacks = kwargs["callbacks"]
 
-    actor_user = kwargs["actors"][actor_index]()
+    actor_user = kwargs["actors"][actor_index](actor_args)
 
     runner = ActorRunner(
         actor_index,

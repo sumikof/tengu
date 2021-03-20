@@ -21,19 +21,19 @@ class MultiQueue(multiprocessing.queues.Queue):
 
     def __init__(self, maxsize=0, *, ctx):
         super(MultiQueue, self).__init__(maxsize=maxsize, ctx=ctx)
-        self.size = SharedCounter(0)
+        self.counter = SharedCounter(0)
 
     def put(self, *args, **kwargs):
-        self.size.increment(1)
+        self.counter.increment(1)
         super(MultiQueue, self).put(*args, **kwargs)
 
     def get(self, *args, **kwargs):
-        self.size.increment(-1)
+        self.counter.increment(-1)
         return super(MultiQueue, self).get(*args, **kwargs)
 
     def qsize(self):
         """ Reliable implementation of multiprocessing.Queue.qsize() """
-        return self.size.value
+        return self.counter.value
 
     def empty(self):
         """ Reliable implementation of multiprocessing.Queue.empty() """

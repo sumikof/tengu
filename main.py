@@ -17,9 +17,9 @@ def run_agent57(enable_train):
     argument_config(param.general_param)
 
     from tengu.drlfx.oanda_rl.oanda_generator import OandaEnvGenerator
-    from tengu.drlfx.oanda_rl.oanda_agent import env_manager
-    env_manager.set_generator(OandaEnvGenerator(param.general_param))
-    env = env_manager.create_env("main")
+    env_generator = OandaEnvGenerator(param.general_param)
+
+    env = env_generator.create_env("main")
     setup_loglevel(param)
     # ゲーム情報
     print("action_space      : " + str(env.action_space))
@@ -27,8 +27,9 @@ def run_agent57(enable_train):
     print("observation_space.shae : " + str(env.observation_space.shape))
     print("reward_range      : " + str(env.reward_range))
 
-    from tengu.drlfx.oanda_rl.oanda_agent import MyActor1
-    param.agent_param["actors"] = [MyActor1 for _ in range(param.general_param["actor_num"])]  # [MyActor1, MyActor2]
+    from tengu.drlfx.oanda_rl.oanda_agent import MyActor
+    param.agent_param["actors"] = [MyActor for _ in range(param.general_param["actor_num"])]  # [MyActor1, MyActor2]
+    param.agent_param["actor_args"] = env_generator
 
     from tengu.drlfx.agent.callbacks import LoggerType
     from tengu.drlfx.agent.main_runner import run_gym_agent57
@@ -41,7 +42,7 @@ def run_agent57(enable_train):
         nb_time=param.general_param["nb_time"],  # 最大実行時間
         logger_type=LoggerType.STEP,
         log_interval=param.general_param["log_interval"],
-        test_env=env_manager.create_env,
+        test_env=env_generator.create_env,
         is_load_weights=param.general_param["is_load_weights"]
     )
     env.close()
